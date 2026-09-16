@@ -10,7 +10,8 @@ export const CREDITS_PER_SECOND = CREDITS_PER_SECOND_STANDARD;
  * The "Pro" engine (Vidu S2-Editing) bills with the Pro multiplier.
  * The "Plus" engine (xmax / X2) bills at the standard rate.
  */
-export const PRO_PROVIDER_CREDIT_MULTIPLIER = 2;
+export const CREDITS_PER_SECOND_PRO = 2.5;
+export const PRO_PROVIDER_CREDIT_MULTIPLIER = CREDITS_PER_SECOND_PRO / CREDITS_PER_SECOND_STANDARD;
 
 export function getProviderCreditMultiplier(provider: string | null | undefined): number {
   return provider === VIDU_REALTIME_PROVIDER || provider === 'decart'
@@ -23,8 +24,15 @@ export function getCreditRatePerSecond(
   hasBackground: boolean,
   provider?: string | null | undefined,
 ): number {
+  if (provider === VIDU_REALTIME_PROVIDER || provider === 'decart') return CREDITS_PER_SECOND_PRO;
   const baseRate = hasAvatar && hasBackground
     ? CREDITS_PER_SECOND_BLENDED
     : CREDITS_PER_SECOND_STANDARD;
   return baseRate * getProviderCreditMultiplier(provider);
+}
+
+// The existing billing API accepts whole usage units worth two credits each.
+// Keep fractional units between flushes; round down only when sending usage.
+export function getBillableUsageUnits(seconds: number, blended: boolean, provider: string): number {
+  return seconds * getCreditRatePerSecond(blended, blended, provider) / CREDITS_PER_SECOND_STANDARD;
 }

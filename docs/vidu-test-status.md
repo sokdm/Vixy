@@ -1,6 +1,6 @@
 # Vidu quality-test branch
 
-Branch `test/vidu-pro-quality` implements Pro using Vidu S2-Editing. App version stays at 2.5.9; no release tag is created. Live output quality has not yet been verified with a camera session.
+Version 2.5.10 includes Pro using Vidu S2-Editing and Plus using Xmax. Users must choose an engine for each new stream; neither is preselected. Live output quality has not yet been verified with a camera session.
 
 ## Implemented
 
@@ -15,7 +15,7 @@ Protocol reference: [Vidu S2-Editing parameters](https://platform.vidu.com/vidu-
 
 ## Testing quality
 
-Use the Vercel preview for this branch, sign in, select Pro, upload a PNG/JPEG/WebP reference under 2 MB, and start the camera. Pro currently uses image-based subject replacement; text/background prompt controls do not change Vidu output. Stop the session after comparing the generated output. Start a new session after the test timer expires.
+Sign in, choose Pro in the engine dialog, upload a PNG/JPEG/WebP reference under 2 MB, and start the camera. Pro currently uses image-based subject replacement; text/background prompt controls do not change Vidu output. Stop the session after comparing the generated output. Start a new session after the test timer expires.
 
 The server environment needs a Vidu API key with S2-Editing access and working Supabase credentials. The downloaded source's local `.env` files contained placeholder Supabase browser credentials. Keep all real credentials outside Git. Mock credentials cannot evaluate Vidu quality and are rejected by the RTC client.
 
@@ -26,3 +26,9 @@ Automated checks exercise session credentials and payloads, renderer selection, 
 Web builds use their own deployment's `/api`; configured remote API URLs remain supported in packaged desktop builds. Hosted voice controls explain that MorphlyVC requires the desktop app instead of calling desktop-only routes.
 
 Production logs on September 16 showed wallet requests reaching the 30-second function timeout, including user upserts taking 13-17 seconds. That database latency is separate from the Vidu RTC integration and is not resolved here.
+
+## Credit rates and engine selection
+
+Pro uses 2.5 credits/second. Plus retains 2 credits/second for a single transformation and 4 credits/second for avatar plus background. The engine dialog shows the applicable rate and a short quality description before confirming. The clear-image action is removed; Change Image remains available.
+
+The existing server bills whole usage units worth two credits each. The client retains fractional units between heartbeats, so 60 seconds of Pro bills 150 credits. Any final remainder smaller than one usage unit is waived when the session ends; it is never rounded up. No wallet schema migration is required.

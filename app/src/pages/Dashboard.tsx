@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import './dashboard.css';
+import { EngineChoice } from '@/components/EngineChoice';
 import { CustomerEngagement } from '@/components/CustomerEngagement';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -23,10 +24,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useApp } from '@/context/AppContext';
 import { apiFetchWithAuth } from '@/lib/api-client';
 import {
-  CREDITS_PER_SECOND_BLENDED,
-  CREDITS_PER_SECOND_STANDARD,
   getCreditRatePerSecond,
-  getProviderCreditMultiplier,
+  getBillableUsageUnits,
 } from '@/lib/billing';
 import {
   getInstallationId,
@@ -75,7 +74,6 @@ import {
   VIDU_REALTIME_PROVIDER,
   VIDU_REALTIME_MODEL,
   DEFAULT_REALTIME_PROVIDER,
-  REALTIME_PROVIDER_OPTIONS,
   getViduRealtimeUserMessage,
   getRealtimeProviderLabel,
   resolveRealtimeModel,
@@ -438,7 +436,7 @@ function Dashboard() {
   const [cameraPermission, setCameraPermission] = useState<PermissionState | 'unsupported' | 'unknown'>('unknown');
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isRefreshingCameras, setIsRefreshingCameras] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<RealtimeProvider>(DEFAULT_REALTIME_PROVIDER);
+  const [selectedProvider, setSelectedProvider] = useState<RealtimeProvider | ''>('');
   const [engineReadiness, setEngineReadiness] = useState<Record<RealtimeProvider, boolean>>({
     xmax: true,
     vidu: true,
@@ -448,7 +446,7 @@ function Dashboard() {
     vidu: null,
   });
   const [isUpdaterBlocking, setIsUpdaterBlocking] = useState(false);
-  const [isProRateNoticeVisible, setIsProRateNoticeVisible] = useState(false);
+  const [isEngineChoiceOpen, setIsEngineChoiceOpen] = useState(false);
   const [isTourRunning, setIsTourRunning] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isValidatingImage, setIsValidatingImage] = useState(false);
@@ -464,12 +462,12 @@ function Dashboard() {
   );
   const minCreditsToStart = getCreditRatePerSecond(false, false, selectedProvider);
 
-  const activePrompt = buildRealtimeTransformPrompt(
+  const activePrompt = selectedProvider ? buildRealtimeTransformPrompt(
     selectedProvider,
     Boolean(referenceImage),
     activeBgPreset,
     customBgPrompt,
-  );
+  ) : BASE_PROMPT;
   const [preferredMode, setPreferredMode] = useState<QualityMode>('hd');
   const [runtimeModeCap, setRuntimeModeCap] = useState<QualityMode>('hd');
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
@@ -541,16 +539,15 @@ function Dashboard() {
   const activeBgPresetRef = useRef(activeBgPreset);
   const customBgPromptRef = useRef(customBgPrompt);
   const isBlendedModeRef = useRef(isBlendedMode);
-  const selectedProviderRef = useRef(selectedProvider);
   const referenceImageRef = useRef(referenceImage);
   const isStreamingRef = useRef(isStreaming);
   const hasRemoteFrameRef = useRef(hasRemoteFrame);
   const connectionStateRef = useRef<ConnectionState>(connectionState);
   const activeModeRef = useRef<QualityMode>('hd');
 
-  const isEngineReady = engineReadiness[selectedProvider];
-  const engineLoadError = engineLoadErrors[selectedProvider];
-  const activeProviderLabel = getRealtimeProviderLabel(selectedProvider);
+  const isEngineReady = selectedProvider ? engineReadiness[selectedProvider] : false;
+  const engineLoadError = selectedProvider ? engineLoadErrors[selectedProvider] : null;
+  const activeProviderLabel = selectedProvider ? getRealtimeProviderLabel(selectedProvider) : 'Choose engine';
   const activeMode = (selectedProvider === VIDU_REALTIME_PROVIDER || (selectedProvider as string) === 'decart')
     ? 'hd'
     : clampQualityMode(preferredMode, runtimeModeCap);
@@ -574,17 +571,6 @@ function Dashboard() {
     isBlendedModeRef.current = isBlendedMode;
   }, [isBlendedMode]);
 
-  useEffect(() => {
-    selectedProviderRef.current = selectedProvider;
-  }, [selectedProvider]);
-
-  useEffect(() => {
-    if (!isProRateNoticeVisible) return;
-    const dismissTimer = window.setTimeout(() => {
-      setIsProRateNoticeVisible(false);
-    }, 8000);
-    return () => window.clearTimeout(dismissTimer);
-  }, [isProRateNoticeVisible]);
 
   useEffect(() => {
     referenceImageRef.current = referenceImage;
@@ -816,18 +802,9 @@ function Dashboard() {
       // Xmax bills while generation is running. Meter elapsed time only after
       // a decoded remote frame is visible, so low-power frame rates do not
       // change customer billing.
-      // In simultaneous Avatar + Background blending mode, users are charged 4 credits/sec
-      // (2x multiplier on 2 credits/sec base unit).
-      // In single mode (Avatar only or Background only), charge normal 2 credits/sec.
-      // The Pro engine bills at double the Plus rate (4 credits/sec standard, 8 blended).
-      const providerMultiplier = getProviderCreditMultiplier(selectedProviderRef.current);
-      const billingMultiplier = (isBlendedModeRef.current
-        ? CREDITS_PER_SECOND_BLENDED / CREDITS_PER_SECOND_STANDARD
-        : 1) * providerMultiplier;
-      pendingBillableSecondsRef.current += Math.min(
-        secondsDelta,
-        60,
-      ) * billingMultiplier;
+      pendingBillableSecondsRef.current += getBillableUsageUnits(
+        secondsDelta, isBlendedModeRef.current, sessionProviderRef.current,
+      );
     }
   }, []);
 
@@ -1446,6 +1423,7 @@ function Dashboard() {
     options?: { forceNewStream?: boolean; silent?: boolean; provider?: RealtimeProvider },
   ): Promise<MediaStream | null> => {
     const provider = options?.provider ?? selectedProvider;
+    if (!provider) return null;
     if (!options?.forceNewStream && webcamSourceStreamRef.current) {
       const existingTrack = webcamSourceStreamRef.current.getVideoTracks()[0];
 
@@ -2356,6 +2334,7 @@ function Dashboard() {
     stopWebcam();
     setIsStreaming(false);
     setSessionStatus('IDLE');
+    setSelectedProvider('');
     setUiStatus('Disconnected');
 
     if (!options?.silent) {
@@ -2638,7 +2617,7 @@ function Dashboard() {
       return;
     }
 
-    void startWebcam(activeMode, { silent: true, provider: selectedProvider }).catch((error) => {
+    void startWebcam(activeMode, { silent: true, provider: selectedProvider || undefined }).catch((error) => {
       console.error('Failed to apply camera profile:', error);
     });
   }, [activeMode, isStreaming, selectedProvider, startWebcam]);
@@ -2691,7 +2670,7 @@ function Dashboard() {
       const stream = await startWebcam(activeMode, {
         forceNewStream: true,
         silent: true,
-        provider: selectedProvider,
+        provider: selectedProvider || undefined,
       });
 
       if (stream) {
@@ -2709,6 +2688,7 @@ function Dashboard() {
   );
 
   const getStartBlockReason = () => {
+    if (!selectedProvider) return 'Choose an engine before streaming.';
     if (!selectedCameraId) return 'Select your physical laptop camera first.';
     if (selectedDeviceIsVirtual) {
       return 'Virtual cameras cannot be used as the Morphly input. Select your integrated or USB hardware camera.';
@@ -2776,6 +2756,7 @@ function Dashboard() {
   };
 
   const handleStart = async () => {
+    if (!selectedProvider) { setIsEngineChoiceOpen(true); return; }
     const requestedProvider = selectedProvider;
     const requestedProviderLabel = getRealtimeProviderLabel(requestedProvider);
     const startupStartedAt = performance.now();
@@ -3056,12 +3037,11 @@ function Dashboard() {
   const handleProviderChange = (provider: string) => {
     if (isLoading || isStreaming) return;
     setDashboardError(null);
-    const nextProvider = resolveRealtimeProvider(provider);
+    if (provider !== 'xmax' && provider !== 'vidu') return;
+    const nextProvider = provider;
     setSelectedProvider(nextProvider);
     setRuntimeModeCap('hd');
-    if (nextProvider === VIDU_REALTIME_PROVIDER || (nextProvider as string) === 'decart') {
-      setIsProRateNoticeVisible(true);
-    }
+
   };
 
   const handleFullScreenToggle = async () => {
@@ -3166,7 +3146,7 @@ function Dashboard() {
                   <Monitor aria-hidden="true" className="size-5 stroke-[1.4]" />
                 </div>
                 <h2 className="mt-3 text-xs font-semibold text-foreground">Preview offline</h2>
-                <p className="mt-1.5 text-[11px] leading-4 text-muted-foreground">Choose a camera and image to begin.</p>
+                <p className="mt-1.5 text-[11px] leading-4 text-muted-foreground">Choose an engine, camera and image to begin.</p>
           </div>
         )}
 
@@ -3209,7 +3189,7 @@ function Dashboard() {
                   <button
                     type="button"
                     onClick={() => void handleStart()}
-                    disabled={Boolean(startBlockReason)}
+                    disabled={Boolean(selectedProvider && startBlockReason) || isLoading || isStreaming}
                     className="min-h-11 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Try again
@@ -3229,42 +3209,7 @@ function Dashboard() {
           </div>
         )}
 
-        {isProRateNoticeVisible && (
-          <div className="pointer-events-none absolute inset-x-0 top-16 z-30 flex justify-center px-4">
-            <div
-              data-testid="pro-rate-notice"
-              role="alert"
-              aria-live="assertive"
-              aria-atomic="true"
-              aria-labelledby="pro-rate-notice-title"
-              aria-describedby="pro-rate-notice-message"
-              className="pointer-events-auto flex w-full max-w-xl items-start gap-3 rounded-lg border border-warning/25 bg-background p-3.5 text-foreground shadow-[0_18px_45px_rgba(0,0,0,0.32)]"
-            >
-              <span className="grid size-10 shrink-0 place-items-center rounded-md bg-warning-soft text-warning">
-                <CircleAlert aria-hidden="true" className="size-5" />
-              </span>
-              <div className="min-w-0 flex-1 py-0.5">
-                <h2 id="pro-rate-notice-title" className="text-sm font-semibold leading-5 text-foreground">
-                  Pro uses more credits
-                </h2>
-                <p id="pro-rate-notice-message" className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Switching to Pro increases the amount of credits being deducted. Pro deducts {getCreditRatePerSecond(false, false, VIDU_REALTIME_PROVIDER)} credits per second — double the Plus rate ({getCreditRatePerSecond(false, false, DEFAULT_REALTIME_PROVIDER)} credits per second).
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setIsProRateNoticeVisible(false)}
-                  aria-label="Dismiss Pro rate notice"
-                  title="Dismiss Pro rate notice"
-                  className="grid size-11 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <X aria-hidden="true" className="size-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+
 
         {(isStreaming || isLoading) && (isLoading || isSyncingTransform || connectionState === 'reconnecting' || !hasRemoteFrame) && (
           <div className="pointer-events-none absolute inset-x-0 bottom-8 z-20 flex justify-center px-6">
@@ -3286,7 +3231,7 @@ function Dashboard() {
               <span className="flex flex-col">
                 <span className="text-[11px] font-semibold text-foreground">Live output</span>
                 <span className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
-                  {activeProviderLabel} realtime
+                  {selectedProvider ? `${activeProviderLabel} realtime` : 'Choose an engine'}
                 </span>
           </span>
         </div>
@@ -3322,10 +3267,10 @@ function Dashboard() {
             <button
               data-tour="start-stream"
               onClick={handleStart}
-              disabled={Boolean(startBlockReason)}
+              disabled={Boolean(selectedProvider && startBlockReason) || isLoading || isStreaming}
               title={startBlockReason || 'Start live stream'}
               className={`flex h-9 items-center gap-2 rounded-md border px-3 text-[11px] font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success/50 disabled:cursor-not-allowed ${
-                startBlockReason
+                selectedProvider && startBlockReason
                   ? 'border-border bg-background text-muted-foreground'
                   : 'border-primary bg-primary text-primary-foreground hover:bg-primary-hover'
               }`}
@@ -3353,38 +3298,14 @@ function Dashboard() {
               <span>{referenceImage ? 'Change Image' : 'Upload Image'}</span>
             </button>
 
-            {referenceImage && (
-              <button
-                type="button"
-                onClick={() => {
-                  setReferenceImage(null);
-                  if (fileInputRef.current) {
-                    fileInputRef.current.value = '';
-                  }
-                }}
-                className="flex h-9 items-center rounded-md border border-border bg-background px-3 text-[11px] font-medium text-muted-foreground transition-colors duration-200 hover:border-destructive/25 hover:bg-danger-soft hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40"
-              >
-                <span>Clear Image</span>
-              </button>
-            )}
-
-            <select
-              data-testid="realtime-provider-selector"
+            <EngineChoice
               value={selectedProvider}
-              onChange={(event) => handleProviderChange(event.target.value)}
+              onSelect={handleProviderChange}
+              open={isEngineChoiceOpen}
+              onOpenChange={setIsEngineChoiceOpen}
               disabled={isLoading || isStreaming}
-              title={isLoading || isStreaming
-                ? 'Stop the live session before switching engines'
-                : 'Select realtime video engine'}
-              aria-label="Realtime video engine"
-              className="h-9 min-w-[104px] rounded-md border border-border bg-background px-2.5 text-[11px] font-semibold text-foreground transition-colors hover:bg-background focus:border-primary/25 focus:outline-none focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {REALTIME_PROVIDER_OPTIONS.map((provider) => (
-                <option key={provider.value} value={provider.value}>
-                  {provider.label}
-                </option>
-              ))}
-            </select>
+              blended={isBlendedMode}
+            />
 
             <select
               value={(selectedProvider === VIDU_REALTIME_PROVIDER || (selectedProvider as string) === 'decart') ? 'hd' : preferredMode}
@@ -3458,7 +3379,7 @@ function Dashboard() {
                   AI background
                 </label>
                 <span className={`text-[10px] font-semibold tabular-nums ${isBlendedMode ? 'text-warning' : 'text-muted-foreground'}`}>
-                  {currentCreditRate} cr/s
+                  {selectedProvider ? `${currentCreditRate} cr/s` : 'Choose engine'}
                 </span>
               </div>
               <select
@@ -3488,7 +3409,7 @@ function Dashboard() {
                 <div className="flex items-center justify-between gap-1">
                   <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Credits</span>
                   <span className={`text-[10px] font-semibold ${isBlendedMode ? 'text-warning' : 'text-muted-foreground'}`}>
-                    ({currentCreditRate} cr/s)
+                    ({selectedProvider ? `${currentCreditRate} cr/s` : 'Choose engine'})
                   </span>
                 </div>
                 <div className="flex items-center gap-1">

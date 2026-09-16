@@ -19,7 +19,7 @@ const dashboard = fs.readFileSync(path.join(appDirectory, 'src/pages/Dashboard.t
 const appShell = fs.readFileSync(path.join(appDirectory, 'src/App.tsx'), 'utf8');
 const startSessionApi = fs.readFileSync(path.join(appDirectory, 'server/api/start-session.ts'), 'utf8');
 
-test('Vidu is the default and both realtime providers are available', () => {
+test('legacy resolver fallback remains compatible and both realtime providers are available', () => {
   assert.equal(DEFAULT_REALTIME_PROVIDER, 'vidu');
   assert.deepEqual(REALTIME_PROVIDER_OPTIONS.map(({ value }) => value), ['xmax', 'vidu']);
   assert.deepEqual(REALTIME_PROVIDER_OPTIONS.map(({ label }) => label), ['Plus', 'Pro']);
@@ -44,7 +44,8 @@ test('Vidu realtime errors provide actionable user messages', () => {
 });
 
 test('dashboard exposes a compact provider switch and locks it during active sessions', () => {
-  assert.match(dashboard, /data-testid="realtime-provider-selector"/);
+  const selector = fs.readFileSync(path.join(appDirectory, 'src/components/EngineChoice.tsx'), 'utf8');
+  assert.match(selector, /data-testid="realtime-provider-selector"/);
   assert.match(dashboard, /value=\{selectedProvider\}/);
   assert.match(dashboard, /disabled=\{isLoading \|\| isStreaming\}/);
   assert.match(dashboard, /provider: requestedProvider/);

@@ -523,7 +523,12 @@ export default async function handler(req, res) {
   try {
     const isLocalPreview = isLocalPreviewRequest(req);
 
+    if (!['xmax', 'vidu', 'decart'].includes(req.body?.provider)) {
+      return res.status(400).json({ allowed: false, error: 'Choose an engine before streaming.' });
+    }
+
     const provider = normalizeRealtimeProvider(req.body?.provider);
+    const minimumCreditRate = provider === 'vidu' ? 2.5 : CREDITS_PER_SECOND;
     const providerModel = getProviderModel(provider);
     const providerApiKey = getProviderApiKey(provider);
 
@@ -655,7 +660,7 @@ export default async function handler(req, res) {
       userCredits = normalizeCredits(refreshedWallet.data?.credits);
     }
 
-    if (userCredits < CREDITS_PER_SECOND) {
+    if (userCredits < minimumCreditRate) {
       await logRequestEvent('start-session.insufficient_credits', {
         userId,
         credits: userCredits,
@@ -694,7 +699,7 @@ export default async function handler(req, res) {
     const validationMs = Date.now() - validationStartedAt;
     const requestFingerprint = getRequestFingerprint(req);
     const maxSeconds = Math.min(
-      Math.floor(userCredits / CREDITS_PER_SECOND),
+      Math.floor(userCredits / minimumCreditRate),
       getProviderSessionLimitSeconds(provider),
     );
 

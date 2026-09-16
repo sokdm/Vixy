@@ -17,7 +17,9 @@ function isFileProtocol(): boolean {
 }
 
 function getApiBase(): string {
-  if (import.meta.env.DEV) {
+  // Web previews must use the API from the same deployment. A production API
+  // URL here silently connects a new provider UI to an older server contract.
+  if (import.meta.env.DEV || !isFileProtocol()) {
     return LOCAL_API_BASE;
   }
 

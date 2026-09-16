@@ -163,6 +163,9 @@ async function requestMorphlyVc<T>(action: MorphlyVcAction, payload?: Record<str
   }
 
   const route = MORPHLY_VC_ROUTES[action];
+  if (!['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)) {
+    throw new Error('MorphlyVC runs locally. Open Morphly Desktop to use voice conversion.');
+  }
   const headers: Record<string, string> = {};
   let body: BodyInit | undefined;
   if (payload instanceof File) {

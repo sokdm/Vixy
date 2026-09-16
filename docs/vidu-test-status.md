@@ -16,3 +16,11 @@ The downloaded workspace's `.env` files contain placeholder Supabase browser cre
 Offline preview must explicitly use `NODE_ENV=development`, `LOCAL_PREVIEW=true`, `VITE_LOCAL_PREVIEW=true` and mock provider credentials. Server preview bypasses accept only direct loopback requests and are disabled on Vercel and in production. Preview output cannot be used to evaluate Vidu quality.
 
 The review removed permanent-key response fallbacks and the fallback from Vidu to Decart credentials. Provider failures now remain failures in the preview route. A response without a safe client credential is rejected until server-side signaling is implemented.
+
+## Deployed website diagnostics
+
+Web builds now send API requests to `/api` on their own deployment. Previously they could call the live main backend from the Vidu preview, causing a provider mismatch. Configured remote API URLs remain supported for packaged desktop builds.
+
+Hosted voice controls no longer call `/api/local/meanvc/*`; they explain that MorphlyVC requires the desktop app. Localhost and the packaged Electron bridge retain their local voice access.
+
+On September 16, production runtime logs also showed wallet setup requests hitting the 30-second function timeout, including user upserts taking 13–17 seconds. That database/backend latency is independent of the Vidu provider mismatch and is not resolved by these routing fixes.

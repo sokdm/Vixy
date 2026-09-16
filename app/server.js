@@ -55,6 +55,7 @@ function requireLocalMeanVcRequest(req, res, next) {
 // Middleware
 app.use(cors());
 app.use(express.json({
+  limit: '3mb',
   verify: (req, _res, buffer) => {
     req.rawBody = Buffer.from(buffer);
   },

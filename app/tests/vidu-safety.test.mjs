@@ -22,9 +22,33 @@ test('Vidu never substitutes the permanent API key for a client credential', asy
   t.after(() => { if (oldMock === undefined) delete process.env.VIDU_MOCK; else process.env.VIDU_MOCK = oldMock; });
   for (const data of [{ live: { id: 'test-live' }, rtc: { token: 'rtc-only' } }, { token: permanentKey }]) {
     t.mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify(data), { status: 200 }));
-    const result = await createViduTemporaryKey({ apiKey: permanentKey, maxSeconds: 60, sessionId: 'test-session' });
-    assert.equal(result.error.error, 'VIDU_TRANSPORT_NOT_READY');
+    const result = await createViduTemporaryKey({ apiKey: permanentKey, maxSeconds: 60, sessionId: 'test-session', imageUrl: 'https://example.com/reference.png' });
+    assert.equal(result.error.error, 'VIDU_CLIENT_CREDENTIAL_MISSING');
     assert.equal(JSON.stringify(result).includes(permanentKey), false);
     t.mock.restoreAll();
   }
+});
+
+test('Vidu creation sends the selected image and bare server authorization, returns scoped credentials', async (t) => {
+  const apiKey = 'vda_server-only-test';
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    assert.equal(new URL(url).pathname, '/live/s_editing/realtime');
+    assert.equal(options.headers.Authorization, apiKey);
+    assert.deepEqual(JSON.parse(options.body), { image_url: 'https://example.com/my-image.png', editing_type: 'subject_replacement' });
+    return Response.json({ client_secret: 'session-secret', live: { id: 'live-1', live_duration: 90 }, render_uid: 'render-1', rtc: { user_id: 'user-1', token: 'rtc-auth' } });
+  });
+  const result = await createViduTemporaryKey({ apiKey, maxSeconds: 1800, imageUrl: 'https://example.com/my-image.png' });
+  assert.equal(result.token, 'session-secret');
+  assert.equal(result.sessionLimit, 90);
+  assert.equal(result.rtc.token, 'rtc-auth');
+  assert.equal(JSON.stringify(result).includes(apiKey), false);
+});
+
+test('Vidu does not create sessions without an image or retry ambiguous provider failures', async (t) => {
+  let calls = 0;
+  t.mock.method(globalThis, 'fetch', async () => { calls++; return Response.json({}, { status: 500 }); });
+  assert.equal((await createViduTemporaryKey({ apiKey: 'test', maxSeconds: 60 })).error.error, 'INVALID_REFERENCE_IMAGE');
+  assert.equal(calls, 0);
+  await createViduTemporaryKey({ apiKey: 'test', maxSeconds: 60, imageUrl: 'https://example.com/image.png' });
+  assert.equal(calls, 1);
 });

@@ -97,6 +97,7 @@ interface RealtimeClient {
 type AiSessionResponse = {
   allowed: boolean;
   token?: string;
+  baseUrl?: string;
   liveId?: string;
   renderUid?: string;
   rtc?: Record<string, unknown> | null;
@@ -485,6 +486,7 @@ function Dashboard() {
   const webcamSourceStreamRef = useRef<MediaStream | null>(null);
   const webcamStreamRef = useRef<MediaStream | null>(null);
   const realtimeClientRef = useRef<RealtimeClient | null>(null);
+  const viduAbortRef = useRef<AbortController | null>(null);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const transformSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingTransformRef = useRef<TransformState | null>(null);
@@ -1355,6 +1357,8 @@ function Dashboard() {
   }, []);
 
   const disconnectRealtime = useCallback((options?: { skipStateUpdate?: boolean }) => {
+    viduAbortRef.current?.abort();
+    viduAbortRef.current = null;
     clearSoftReconnectTimer();
     clearFrameWatchdog();
     sessionEverConnectedRef.current = false;
@@ -1901,6 +1905,8 @@ function Dashboard() {
     options?: {
       isRecovery?: boolean;
       modelName?: string;
+      baseUrl?: string;
+      maxSeconds?: number;
       liveId?: string;
       renderUid?: string;
       rtc?: Record<string, unknown> | null;
@@ -1908,6 +1914,9 @@ function Dashboard() {
   ): Promise<RealtimeClient> => {
     let activeRealtimeClient: RealtimeClient | null = null;
     let activeRealtimeSession: ViduRealtimeSession | null = null;
+    const controller = new AbortController();
+    viduAbortRef.current = controller;
+    const startupDeadline = setTimeout(() => controller.abort(), 40000);
     let firstFrameSettled = false;
     let firstFrameDelivered = false;
     let resolveFirstFrame: (() => void) | null = null;
@@ -1954,13 +1963,9 @@ function Dashboard() {
       }
 
       const { createViduClient, models } = await import('@/lib/vidu-realtime');
-      const client = createViduClient({ apiKey: apiToken });
+      const client = createViduClient({ apiKey: apiToken, baseUrl: options?.baseUrl });
       const model = models.realtime(options?.modelName || VIDU_REALTIME_MODEL);
-      const initialInput = {
-        prompt: initialTransform.prompt,
-        enhance: initialTransform.enhance,
-        ...(initialTransform.image ? { image: initialTransform.image } : {}),
-      };
+      // The reference image is already part of the server creation request.
 
       const handleConnectionChange = (nextState: ConnectionState) => {
         connectionStateRef.current = nextState;
@@ -1982,13 +1987,16 @@ function Dashboard() {
           if (!hasRemoteFrameRef.current) {
             failBeforeFirstFrame(new Error('Pro disconnected before delivering video output.'));
           } else if (!restartInFlightRef.current && isStreamingRef.current) {
-            void restartRealtimeSessionRef.current?.('vidu-disconnected');
+            void handleStopRef.current?.({ silent: true });
           }
         }
       };
 
       const realtimeSession = await client.connect(stream, {
+        signal: controller.signal,
         apiKey: apiToken,
+        baseUrl: options?.baseUrl,
+        maxSeconds: options?.maxSeconds,
         liveId: options?.liveId,
         renderUid: options?.renderUid,
         rtc: options?.rtc,
@@ -1996,6 +2004,7 @@ function Dashboard() {
         mirror: 'auto',
         resolution: '720p',
         onConnectionChange: handleConnectionChange,
+        onError: failBeforeFirstFrame,
         onRemoteStream: (editedStream: MediaStream) => {
           const video = outputVideoRef.current as VideoElementWithFrameCallbacks | null;
           if (!video) return;
@@ -2068,14 +2077,12 @@ function Dashboard() {
       realtimeSession.on('error', handleError);
 
       setUiStatus('Preparing Pro output...');
-      const initialUpdatePromise = realtimeSession.set(initialInput);
-      void initialUpdatePromise.catch(() => {});
-      await Promise.race([initialUpdatePromise, firstFramePromise]);
 
       const realtimeClient: RealtimeClient = {
         disconnect: async () => {
           realtimeSession.off('error', handleError);
-          realtimeSession.disconnect();
+          await realtimeSession.disconnect();
+          if (viduAbortRef.current === controller) viduAbortRef.current = null;
         },
         setTransform: async (transform) => {
           await realtimeSession.set({
@@ -2121,8 +2128,10 @@ function Dashboard() {
       if (realtimeClientRef.current === activeRealtimeClient) {
         realtimeClientRef.current = null;
       }
-      activeRealtimeSession?.disconnect();
+      await activeRealtimeSession?.disconnect();
       throw error instanceof Error ? error : new Error(errorMessage);
+    } finally {
+      clearTimeout(startupDeadline);
     }
   }, [
     cancelRemoteFrameMonitor,
@@ -2145,6 +2154,8 @@ function Dashboard() {
     options?: {
       isRecovery?: boolean;
       modelName?: string;
+      baseUrl?: string;
+      maxSeconds?: number;
       liveId?: string;
       renderUid?: string;
       rtc?: Record<string, unknown> | null;
@@ -2154,6 +2165,8 @@ function Dashboard() {
       return connectToVidu(stream, apiToken, initialTransform, {
         isRecovery: options?.isRecovery,
         modelName: VIDU_REALTIME_MODEL,
+        baseUrl: options?.baseUrl,
+        maxSeconds: options?.maxSeconds,
         liveId: options?.liveId,
         renderUid: options?.renderUid,
         rtc: options?.rtc,
@@ -2172,6 +2185,11 @@ function Dashboard() {
     reason: string,
     options?: { immediate?: boolean },
   ) => {
+    if (sessionProviderRef.current === VIDU_REALTIME_PROVIDER) {
+      await handleStopRef.current?.({ silent: true });
+      setDashboardError({ title: 'Pro session ended', message: 'Start a new Pro session to continue.', canRetry: true });
+      return;
+    }
     if (!isStreamingRef.current || restartInFlightRef.current || !sessionTokenRef.current) {
       return;
     }
@@ -2283,6 +2301,10 @@ function Dashboard() {
     const activeUserId = user?.id;
     const activeSessionId = sessionIdRef.current || undefined;
     const shouldEndSession = Boolean(sessionTokenRef.current);
+    if (sessionProviderRef.current === VIDU_REALTIME_PROVIDER) {
+      // Stop provider billing immediately, before potentially slow wallet requests.
+      void realtimeClientRef.current?.disconnect();
+    }
 
     if (connectionStateRef.current === 'generating') {
       recordBillableGenerationTime();
@@ -2374,8 +2396,7 @@ function Dashboard() {
     safelyStopSessionRef.current = safelyStopSession;
   }, [safelyStopSession]);
 
-  const isDevOrPreview = typeof import.meta !== 'undefined' &&
-    (import.meta.env.VITE_LOCAL_PREVIEW === 'true' || import.meta.env.LOCAL_PREVIEW === 'true' || import.meta.env.DEV);
+  const isDevOrPreview = import.meta.env.DEV && import.meta.env.VITE_LOCAL_PREVIEW === 'true';
 
   // Polls /api/session-status every 5 s while streaming.
   // The server computes the live remaining balance from recorded generation time.
@@ -2695,6 +2716,7 @@ function Dashboard() {
     if (cameraPermission === 'denied') {
       return 'Camera permission is required. Allow access, then refresh the camera list.';
     }
+    if (selectedProvider === VIDU_REALTIME_PROVIDER && !referenceImage) return 'Upload a reference image for Pro.';
     if (!referenceImage && activeBgPreset === 'original' && !customBgPrompt.trim()) {
       return 'Upload a reference image before starting.';
     }
@@ -2829,6 +2851,13 @@ function Dashboard() {
         throw new Error('Webcam start failed');
       }
 
+      let viduReference: string | undefined;
+      if (requestedProvider === VIDU_REALTIME_PROVIDER) {
+        const reference = getDesiredTransformState().image;
+        if (!reference) throw new Error('Upload a reference image for Pro.');
+        const { encodeViduReference } = await import('@/lib/vidu-realtime');
+        viduReference = await encodeViduReference(reference);
+      }
       let realtimeClient: RealtimeClient | null = null;
       let lastConnectError: unknown;
       const maxConnectAttempts = AI_CONNECT_MAX_ATTEMPTS[requestedProvider];
@@ -2844,6 +2873,7 @@ function Dashboard() {
             installationId: getInstallationId(),
             platform: window.electron ? 'desktop' : 'web',
             provider: requestedProvider,
+            ...(viduReference ? { referenceImage: viduReference, editingType: 'subject_replacement' } : {}),
           }),
         });
 
@@ -2888,6 +2918,8 @@ function Dashboard() {
           const providerConnectStartedAt = performance.now();
           realtimeClient = await withTimeout(
             connectToRealtimeProvider(requestedProvider, stream, sessionToken, getDesiredTransformState(), {
+              baseUrl: startResponse.baseUrl,
+              maxSeconds: startResponse.maxSeconds,
               liveId: startResponse.liveId,
               renderUid: startResponse.renderUid,
               rtc: startResponse.rtc,

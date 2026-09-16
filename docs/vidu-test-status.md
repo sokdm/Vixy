@@ -1,26 +1,28 @@
-# Vidu migration test snapshot
+# Vidu quality-test branch
 
-This branch preserves the in-progress Decart-to-Vidu Pro engine migration. It is not a release or a working Vidu quality test. Package version stays at 2.5.9; no tag is created.
+Branch `test/vidu-pro-quality` implements Pro using Vidu S2-Editing. App version stays at 2.5.9; no release tag is created. Live output quality has not yet been verified with a camera session.
 
-## Remaining integration work
+## Implemented
 
-- Implement AliRTC camera publishing and subscription to Vidu's `render_uid`. The current video client only clones the camera stream. That loopback is now restricted to development with mock credentials; real connections fail explicitly.
-- Implement authenticated server-side WebSocket signaling, including initialization, prompt updates and hangup, without exposing the permanent Vidu key to the browser.
-- Align REST paths, authorization and payloads with the current [Vidu S2-Editing documentation](https://platform.vidu.com/vidu-stream/doc/s2-editing/parameters). The existing `Token` authorization prefix does not match that documentation.
-- Forward the selected reference image correctly, enforce session limits and ensure provider billing stops when Morphly ends the session.
+- Session creation sends the selected reference image and `subject_replacement` to `/live/s_editing/realtime`, with the documented bare server-side Authorization header.
+- Browser signaling uses Vidu's short-lived `client_secret`. The permanent API key never goes to the browser. Responses missing scoped credentials fail explicitly.
+- The pinned AliRTC 7.1.9 SDK publishes a clone of the selected camera track, disables microphone publishing and plays only the generated stream from `render_uid`.
+- Initialization, NOT_READY retries, reference-image updates, provider disconnects, startup cancellation and hangup are implemented. Stop sends hangup before waiting on wallet requests.
+- The client ends quality-test sessions after at most 120 seconds (or the shorter returned provider/session limit). This browser timer is not server-enforced credit protection. Provider lifetime also depends on Vidu's returned `live_duration`.
+- Session creation retries explicit rate limits only. Ambiguous server failures/timeouts are not automatically retried because creation is not documented as idempotent.
 
-## Local configuration
+Protocol reference: [Vidu S2-Editing parameters](https://platform.vidu.com/vidu-stream/doc/s2-editing/parameters) and [official browser demo](https://platform.vidu.com/live-doc/files/s2-editing/quick-start/index.html).
 
-The downloaded workspace's `.env` files contain placeholder Supabase browser credentials. Replace `VITE_SUPABASE_ANON_KEY` with the project's actual publishable/anon key and configure the server credentials for authenticated testing. Do not commit `.env` files. See [Supabase API keys](https://supabase.com/docs/guides/getting-started/api-keys).
+## Testing quality
 
-Offline preview must explicitly use `NODE_ENV=development`, `LOCAL_PREVIEW=true`, `VITE_LOCAL_PREVIEW=true` and mock provider credentials. Server preview bypasses accept only direct loopback requests and are disabled on Vercel and in production. Preview output cannot be used to evaluate Vidu quality.
+Use the Vercel preview for this branch, sign in, select Pro, upload a PNG/JPEG/WebP reference under 2 MB, and start the camera. Pro currently uses image-based subject replacement; text/background prompt controls do not change Vidu output. Stop the session after comparing the generated output. Start a new session after the test timer expires.
 
-The review removed permanent-key response fallbacks and the fallback from Vidu to Decart credentials. Provider failures now remain failures in the preview route. A response without a safe client credential is rejected until server-side signaling is implemented.
+The server environment needs a Vidu API key with S2-Editing access and working Supabase credentials. The downloaded source's local `.env` files contained placeholder Supabase browser credentials. Keep all real credentials outside Git. Mock credentials cannot evaluate Vidu quality and are rejected by the RTC client.
 
-## Deployed website diagnostics
+Automated checks exercise session credentials and payloads, renderer selection, prompt signaling, initialization retry, timeouts, cancellation and hangup. They mock the provider and RTC engine; they do not establish real Vidu media connectivity.
 
-Web builds now send API requests to `/api` on their own deployment. Previously they could call the live main backend from the Vidu preview, causing a provider mismatch. Configured remote API URLs remain supported for packaged desktop builds.
+## Separate deployment fixes and limitations
 
-Hosted voice controls no longer call `/api/local/meanvc/*`; they explain that MorphlyVC requires the desktop app. Localhost and the packaged Electron bridge retain their local voice access.
+Web builds use their own deployment's `/api`; configured remote API URLs remain supported in packaged desktop builds. Hosted voice controls explain that MorphlyVC requires the desktop app instead of calling desktop-only routes.
 
-On September 16, production runtime logs also showed wallet setup requests hitting the 30-second function timeout, including user upserts taking 13–17 seconds. That database/backend latency is independent of the Vidu provider mismatch and is not resolved by these routing fixes.
+Production logs on September 16 showed wallet requests reaching the 30-second function timeout, including user upserts taking 13-17 seconds. That database latency is separate from the Vidu RTC integration and is not resolved here.

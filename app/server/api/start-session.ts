@@ -160,10 +160,10 @@ export async function createViduTemporaryKey({
   imageUrl,
   editingType,
 }) {
-  const sessionLimit = Math.max(10, Math.min(Math.floor(Number(maxSeconds) || 10), 3600));
+  const sessionLimit = Math.max(1, Math.min(Math.floor(Number(maxSeconds) || 1), 120));
   const baseUrl = getViduApiBaseUrl();
 
-  if (process.env.VIDU_MOCK === 'true' || apiKey === 'mock') {
+  if (process.env.NODE_ENV === 'development' && !process.env.VERCEL && (process.env.VIDU_MOCK === 'true' || apiKey === 'mock')) {
     return {
       token: `mock_vidu_secret_${sessionId}`,
       liveId: `mock_live_${Date.now()}`,
@@ -173,9 +173,13 @@ export async function createViduTemporaryKey({
     };
   }
 
-  const effectiveImageUrl = (typeof imageUrl === 'string' && imageUrl.startsWith('http'))
-    ? imageUrl
-    : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb';
+  const effectiveImageUrl = typeof imageUrl === 'string' ? imageUrl.trim() : '';
+  if (!/^(https?:\/\/|data:image\/(png|jpeg|webp);base64,|ssupload:)/i.test(effectiveImageUrl) || effectiveImageUrl.length > 3_000_000) {
+    return { error: { error: 'INVALID_REFERENCE_IMAGE', details: 'Choose a reference image under 2 MB for Pro.' } };
+  }
+  if (editingType && !['subject_replacement', 'style_transfer', 'background_replacement', 'virtual_tryon'].includes(editingType)) {
+    return { error: { error: 'INVALID_EDITING_TYPE', details: 'Unsupported Pro editing scenario.' } };
+  }
 
   for (let attempt = 1; attempt <= VIDU_TOKEN_MAX_ATTEMPTS; attempt += 1) {
     try {
@@ -183,7 +187,7 @@ export async function createViduTemporaryKey({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Token ${apiKey}`,
+          Authorization: apiKey,
         },
         body: JSON.stringify({
           image_url: effectiveImageUrl,
@@ -198,7 +202,8 @@ export async function createViduTemporaryKey({
         const providerStatus = response.status;
         const providerCode = data?.code || data?.error_code || null;
         const message = data?.message || data?.error || response.statusText;
-        const retryable = providerStatus === 408 || providerStatus === 429 || providerStatus >= 500;
+        const retryable = providerStatus === 429;
+        const unavailable = providerStatus >= 500;
 
         console.warn('[Vidu] realtime session request failed', {
           attempt,
@@ -217,7 +222,7 @@ export async function createViduTemporaryKey({
           ? 'Pro could not authenticate this session. Check VIDU_API_KEY or contact support.'
           : providerStatus === 429
             ? 'Pro is limiting new sessions right now. Wait a moment, then try again.'
-            : retryable
+            : retryable || unavailable
               ? 'Pro is temporarily unavailable. Check your connection, then try again.'
               : 'Pro rejected this session configuration. Try Plus or contact support.';
 
@@ -232,15 +237,18 @@ export async function createViduTemporaryKey({
       }
 
       const liveId = String(data?.live?.id || data?.live_id || data?.data?.live_id || '');
-      const clientSecret = String(data?.client_secret || data?.data?.client_secret || data?.token || '');
+      const clientSecret = String(data?.client_secret || data?.data?.client_secret || '');
       if (!clientSecret || clientSecret === apiKey) {
         return { error: {
-          error: 'VIDU_TRANSPORT_NOT_READY',
-          details: 'Pro RTC transport and server-side signaling are not implemented yet. Use Plus for now.',
+          error: 'VIDU_CLIENT_CREDENTIAL_MISSING',
+          details: 'Vidu did not return browser session credentials. Check S2-Editing access for this API key.',
         } };
       }
       const renderUid = String(data?.render_uid || data?.data?.render_uid || '');
       const rtc = data?.rtc || data?.data?.rtc || null;
+      if (!liveId || !renderUid || typeof rtc?.token !== 'string' || !rtc.token || rtc.token === apiKey || !rtc.user_id) {
+        return { error: { error: 'VIDU_RTC_CREDENTIAL_MISSING', details: 'Vidu returned incomplete RTC connection details.' } };
+      }
       const expiresAt = data?.expires_at || data?.data?.expires_at || new Date(Date.now() + sessionLimit * 1000).toISOString();
 
       return {
@@ -249,15 +257,13 @@ export async function createViduTemporaryKey({
         renderUid,
         rtc,
         expiresAt,
-        sessionLimit,
+        sessionLimit: Math.min(sessionLimit, Number(data?.live?.live_duration) || sessionLimit),
+        baseUrl,
       };
     } catch (error) {
       const isTimeout = error?.name === 'TimeoutError' || error?.name === 'AbortError';
       console.warn('[Vidu] request exception:', error?.message);
-      if (isTimeout && attempt < VIDU_TOKEN_MAX_ATTEMPTS) {
-        await new Promise((resolve) => setTimeout(resolve, VIDU_TOKEN_RETRY_DELAY_MS));
-        continue;
-      }
+
       return {
         error: {
           error: 'AI_SESSION_CREATION_FAILED',
@@ -543,7 +549,8 @@ export default async function handler(req, res) {
         allowed: true,
         sessionId,
         credits: 999999,
-        maxSeconds: 1800,
+        maxSeconds: providerSession.sessionLimit || 1800,
+        baseUrl: providerSession.baseUrl,
         token: providerSession.token,
         liveId: providerSession.liveId || `preview_live_${Date.now()}`,
         renderUid: providerSession.renderUid || `preview_render_${Date.now()}`,
@@ -781,7 +788,8 @@ export default async function handler(req, res) {
       allowed: true,
       sessionId: newSession.id,
       credits: userCredits,
-      maxSeconds,
+      maxSeconds: providerSession.sessionLimit || maxSeconds,
+      baseUrl: providerSession.baseUrl,
       token: providerSession.token,
       liveId: providerSession.liveId,
       renderUid: providerSession.renderUid,

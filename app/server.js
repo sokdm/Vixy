@@ -17,9 +17,9 @@ const PORT = process.env.PORT || 3000;
 const xmaxConfigError = process.env.XMAX_API_KEY?.trim()
   ? null
   : 'Missing XMAX_API_KEY';
-const decartConfigError = process.env.DECART_API_KEY?.trim()
+const viduConfigError = process.env.VIDU_API_KEY?.trim()
   ? null
-  : 'Missing DECART_API_KEY';
+  : 'Missing VIDU_API_KEY';
 const meanVcRuntime = createMeanVcRuntimeController({
   repositoryRoot: path.resolve(__dirname, '../third_party/MeanVC2'),
   dataRoot: path.resolve(__dirname, '.meanvc'),
@@ -144,8 +144,8 @@ app.listen(PORT, () => {
   if (xmaxConfigError) {
     console.warn(`[config] ${xmaxConfigError}`);
   }
-  if (decartConfigError) {
-    console.warn(`[config] ${decartConfigError}`);
+  if (viduConfigError) {
+    console.warn(`[config] ${viduConfigError}`);
   }
 });
 

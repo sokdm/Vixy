@@ -4,10 +4,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  DECART_REALTIME_MODEL,
+  VIDU_REALTIME_PROVIDER,
+  VIDU_REALTIME_MODEL,
   DEFAULT_REALTIME_PROVIDER,
   REALTIME_PROVIDER_OPTIONS,
-  getDecartRealtimeUserMessage,
+  getViduRealtimeUserMessage,
   getRealtimeProviderLabel,
   resolveRealtimeModel,
   resolveRealtimeProvider,
@@ -18,27 +19,28 @@ const dashboard = fs.readFileSync(path.join(appDirectory, 'src/pages/Dashboard.t
 const appShell = fs.readFileSync(path.join(appDirectory, 'src/App.tsx'), 'utf8');
 const startSessionApi = fs.readFileSync(path.join(appDirectory, 'server/api/start-session.ts'), 'utf8');
 
-test('Xmax is the default and both realtime providers are available', () => {
-  assert.equal(DEFAULT_REALTIME_PROVIDER, 'xmax');
-  assert.deepEqual(REALTIME_PROVIDER_OPTIONS.map(({ value }) => value), ['xmax', 'decart']);
+test('Vidu is the default and both realtime providers are available', () => {
+  assert.equal(DEFAULT_REALTIME_PROVIDER, 'vidu');
+  assert.deepEqual(REALTIME_PROVIDER_OPTIONS.map(({ value }) => value), ['xmax', 'vidu']);
   assert.deepEqual(REALTIME_PROVIDER_OPTIONS.map(({ label }) => label), ['Plus', 'Pro']);
   assert.equal(getRealtimeProviderLabel('xmax'), 'Plus');
-  assert.equal(getRealtimeProviderLabel('decart'), 'Pro');
-  assert.equal(resolveRealtimeProvider(undefined), 'xmax');
-  assert.equal(resolveRealtimeProvider('decart'), 'decart');
+  assert.equal(getRealtimeProviderLabel('vidu'), 'Pro');
+  assert.equal(resolveRealtimeProvider(undefined), 'vidu');
+  assert.equal(resolveRealtimeProvider('vidu'), 'vidu');
+  assert.equal(resolveRealtimeProvider('decart'), 'vidu');
 });
 
-test('Decart uses the native 720p Lucy 2.5 character model', () => {
-  assert.equal(DECART_REALTIME_MODEL, 'lucy-2.5');
-  assert.equal(resolveRealtimeModel('decart', 'lucy-2.5'), 'lucy-2.5');
-  assert.equal(resolveRealtimeModel('decart', 'invalid'), 'lucy-2.5');
+test('Vidu uses the native S2-Editing character model', () => {
+  assert.equal(VIDU_REALTIME_MODEL, 's2-editing');
+  assert.equal(resolveRealtimeModel('vidu', 's2-editing'), 's2-editing');
+  assert.equal(resolveRealtimeModel('vidu', 'invalid'), 's2-editing');
 });
 
-test('Decart realtime errors provide actionable user messages', () => {
-  assert.match(getDecartRealtimeUserMessage({ message: 'Rejected by moderation' }), /Pro did not accept/i);
-  assert.match(getDecartRealtimeUserMessage({ message: 'Insufficient credits' }), /provider capacity is exhausted/i);
-  assert.match(getDecartRealtimeUserMessage({ code: 'WEBRTC_ERROR' }), /Pro connection was interrupted/i);
-  assert.match(dashboard, /provider === DECART_REALTIME_PROVIDER[\s\S]*getDecartRealtimeUserMessage\(error, fallback\)/);
+test('Vidu realtime errors provide actionable user messages', () => {
+  assert.match(getViduRealtimeUserMessage({ message: 'Rejected by moderation' }), /Pro did not accept/i);
+  assert.match(getViduRealtimeUserMessage({ message: 'Insufficient credits' }), /provider capacity is exhausted/i);
+  assert.match(getViduRealtimeUserMessage({ code: 'WEBRTC_ERROR' }), /Pro connection was interrupted/i);
+  assert.match(dashboard, /getViduRealtimeUserMessage\(error, fallback\)/);
 });
 
 test('dashboard exposes a compact provider switch and locks it during active sessions', () => {
@@ -49,24 +51,19 @@ test('dashboard exposes a compact provider switch and locks it during active ses
   assert.match(dashboard, /connectToRealtimeProvider/);
   assert.match(dashboard, /mirror: 'auto'/);
   assert.match(dashboard, /resolution: '720p'/);
-  assert.match(dashboard, /realtimeSession\.set\(\{/);
-  assert.doesNotMatch(dashboard, /initialState,/);
-  assert.match(dashboard, /Promise\.race\(\[initialUpdatePromise, firstFramePromise\]\)/);
-  assert.match(dashboard, /HD 1472×832/);
   assert.match(dashboard, /const PRO_CAMERA_FPS = 30/);
   assert.match(dashboard, /buildProviderVideoInputConstraints\(attemptedMode, provider/);
 });
 
-test('Decart token creation retries transient failures and preserves the SDK HTTP status', () => {
-  assert.match(startSessionApi, /DECART_TOKEN_MAX_ATTEMPTS = 2/);
-  assert.match(startSessionApi, /error\?\.data\?\.status/);
+test('Vidu token creation retries transient failures and preserves the HTTP status', () => {
+  assert.match(startSessionApi, /VIDU_TOKEN_MAX_ATTEMPTS = 2/);
   assert.match(startSessionApi, /providerStatus === 429/);
   assert.match(startSessionApi, /providerStatus >= 500/);
 });
 
 test('startup avoids stacked retries and reports each connection phase', () => {
-  assert.match(dashboard, /xmax: 3,[\s\S]*decart: 1/);
-  assert.match(dashboard, /xmax: 45000,[\s\S]*decart: 45000/);
+  assert.match(dashboard, /xmax: 3,[\s\S]*vidu: 1/);
+  assert.match(dashboard, /xmax: 45000,[\s\S]*vidu: 45000/);
   assert.match(dashboard, /Checking stream setup/);
   assert.match(dashboard, /Opening camera/);
   assert.match(dashboard, /Authorizing \$\{requestedProviderLabel\}/);

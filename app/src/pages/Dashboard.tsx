@@ -17,7 +17,7 @@ import {
   CircleAlert,
   X,
 } from 'lucide-react';
-import type { RealTimeClient as DecartRealtimeSession } from '@decartai/sdk';
+import type { ViduRealtimeSession } from '@/lib/vidu-realtime';
 import { BACKGROUND_PRESETS, buildRealtimeTransformPrompt } from '@/lib/background-presets';
 import { useAuth } from '@/context/AuthContext';
 import { useApp } from '@/context/AppContext';
@@ -72,11 +72,11 @@ import {
   prepareXmaxReferenceImage,
 } from '@/lib/xmax-realtime';
 import {
-  DECART_REALTIME_PROVIDER,
-  DECART_REALTIME_MODEL,
+  VIDU_REALTIME_PROVIDER,
+  VIDU_REALTIME_MODEL,
   DEFAULT_REALTIME_PROVIDER,
   REALTIME_PROVIDER_OPTIONS,
-  getDecartRealtimeUserMessage,
+  getViduRealtimeUserMessage,
   getRealtimeProviderLabel,
   resolveRealtimeModel,
   resolveRealtimeProvider,
@@ -97,6 +97,9 @@ interface RealtimeClient {
 type AiSessionResponse = {
   allowed: boolean;
   token?: string;
+  liveId?: string;
+  renderUid?: string;
+  rtc?: Record<string, unknown> | null;
   error?: string;
   details?: string;
   providerStatus?: number;
@@ -167,13 +170,12 @@ const INITIAL_RETRY_DELAY_MS = 1000;
 const MAX_RETRY_DELAY_MS = 10000;
 const AI_CONNECT_TIMEOUT_MS: Record<RealtimeProvider, number> = {
   xmax: 45000,
-  decart: 45000,
+  vidu: 45000,
 };
 const AI_FIRST_FRAME_TIMEOUT_MS = 15000;
 const AI_CONNECT_MAX_ATTEMPTS: Record<RealtimeProvider, number> = {
   xmax: 3,
-  // The Pro SDK already retries WebRTC internally with exponential backoff.
-  decart: 1,
+  vidu: 1,
 };
 // After this many consecutive failed restarts, surface a retryable error
 // instead of looping "Reconnecting..." forever.
@@ -196,7 +198,7 @@ function buildProviderVideoTrackConstraints(
 ): MediaTrackConstraints {
   const constraints = buildVideoTrackConstraints(mode);
 
-  if (provider === 'decart') {
+  if (provider === VIDU_REALTIME_PROVIDER || (provider as string) === 'decart') {
     constraints.frameRate = {
       ideal: PRO_CAMERA_FPS,
       max: PRO_CAMERA_FPS,
@@ -214,7 +216,7 @@ function buildProviderVideoInputConstraints(
 ): MediaStreamConstraints {
   const constraints = buildVideoInputConstraints(mode, deviceId);
 
-  if (provider === 'decart' && typeof constraints.video === 'object') {
+  if ((provider === VIDU_REALTIME_PROVIDER || (provider as string) === 'decart') && typeof constraints.video === 'object') {
     constraints.video.frameRate = {
       ideal: PRO_CAMERA_FPS,
       max: PRO_CAMERA_FPS,
@@ -348,15 +350,17 @@ function getStartSessionErrorMessage(error: unknown, provider: RealtimeProvider)
     case 'Webcam start failed':
     case 'Xmax connection was not established':
     case 'Decart connection was not established':
+    case 'Vidu connection was not established':
       return null;
     case 'Missing session token':
       return `Failed to start ${getRealtimeProviderLabel(provider)}: missing AI token`;
     default: {
       const fallback = (error.message || 'Failed to start session')
         .replace(/\bXmax\b/gi, 'Plus')
-        .replace(/\bDecart\b/gi, 'Pro');
-      return provider === DECART_REALTIME_PROVIDER
-        ? getDecartRealtimeUserMessage(error, fallback)
+        .replace(/\bDecart\b/gi, 'Pro')
+        .replace(/\bVidu\b/gi, 'Pro');
+      return (provider === VIDU_REALTIME_PROVIDER || (provider as string) === 'decart')
+        ? getViduRealtimeUserMessage(error, fallback)
         : fallback;
     }
   }
@@ -415,7 +419,7 @@ async function apiRequest<T>(endpoint: string, options?: RequestInit): Promise<T
 
 // Preload both SDK modules so selecting an engine never starts with a bundle download.
 const xmaxSdkReadyPromise = import('@xmaxai/sdk-global');
-const decartSdkReadyPromise = import('@decartai/sdk');
+const viduSdkReadyPromise = import('@/lib/vidu-realtime');
 
 function Dashboard() {
   const { user, logout } = useAuth();
@@ -435,12 +439,12 @@ function Dashboard() {
   const [isRefreshingCameras, setIsRefreshingCameras] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<RealtimeProvider>(DEFAULT_REALTIME_PROVIDER);
   const [engineReadiness, setEngineReadiness] = useState<Record<RealtimeProvider, boolean>>({
-    xmax: false,
-    decart: false,
+    xmax: true,
+    vidu: true,
   });
   const [engineLoadErrors, setEngineLoadErrors] = useState<Record<RealtimeProvider, string | null>>({
     xmax: null,
-    decart: null,
+    vidu: null,
   });
   const [isUpdaterBlocking, setIsUpdaterBlocking] = useState(false);
   const [isProRateNoticeVisible, setIsProRateNoticeVisible] = useState(false);
@@ -545,7 +549,7 @@ function Dashboard() {
   const isEngineReady = engineReadiness[selectedProvider];
   const engineLoadError = engineLoadErrors[selectedProvider];
   const activeProviderLabel = getRealtimeProviderLabel(selectedProvider);
-  const activeMode = selectedProvider === 'decart'
+  const activeMode = (selectedProvider === VIDU_REALTIME_PROVIDER || (selectedProvider as string) === 'decart')
     ? 'hd'
     : clampQualityMode(preferredMode, runtimeModeCap);
   useEffect(() => {
@@ -667,7 +671,7 @@ function Dashboard() {
 
     void Promise.allSettled([
       preloadProvider('xmax', xmaxSdkReadyPromise),
-      preloadProvider('decart', decartSdkReadyPromise),
+      preloadProvider('vidu', viduSdkReadyPromise),
     ]);
 
     return () => {
@@ -1596,8 +1600,8 @@ function Dashboard() {
       const fallback = 'Morphly could not apply that live update. The previous style is still active.';
       setDashboardError({
         title: 'Update not applied',
-        message: sessionProviderRef.current === 'decart'
-          ? getDecartRealtimeUserMessage(error, fallback)
+        message: (sessionProviderRef.current === VIDU_REALTIME_PROVIDER || (sessionProviderRef.current as string) === 'decart')
+          ? getViduRealtimeUserMessage(error, fallback)
           : getXmaxRealtimeUserMessage(error, fallback),
       });
     } finally {
@@ -1890,14 +1894,20 @@ function Dashboard() {
     updateMorphlyCamStatus,
   ]);
 
-  const connectToDecart = useCallback(async (
+  const connectToVidu = useCallback(async (
     stream: MediaStream,
     apiToken: string,
     initialTransform: TransformState,
-    options?: { isRecovery?: boolean; modelName?: typeof DECART_REALTIME_MODEL },
+    options?: {
+      isRecovery?: boolean;
+      modelName?: string;
+      liveId?: string;
+      renderUid?: string;
+      rtc?: Record<string, unknown> | null;
+    },
   ): Promise<RealtimeClient> => {
     let activeRealtimeClient: RealtimeClient | null = null;
-    let activeRealtimeSession: DecartRealtimeSession | null = null;
+    let activeRealtimeSession: ViduRealtimeSession | null = null;
     let firstFrameSettled = false;
     let firstFrameDelivered = false;
     let resolveFirstFrame: (() => void) | null = null;
@@ -1943,9 +1953,9 @@ function Dashboard() {
         updateMorphlyCamPlaceholder(getMorphlyCamGuideMessage(false));
       }
 
-      const { createDecartClient, models } = await import('@decartai/sdk');
-      const client = createDecartClient({ apiKey: apiToken });
-      const model = models.realtime(options?.modelName || DECART_REALTIME_MODEL);
+      const { createViduClient, models } = await import('@/lib/vidu-realtime');
+      const client = createViduClient({ apiKey: apiToken });
+      const model = models.realtime(options?.modelName || VIDU_REALTIME_MODEL);
       const initialInput = {
         prompt: initialTransform.prompt,
         enhance: initialTransform.enhance,
@@ -1972,13 +1982,17 @@ function Dashboard() {
           if (!hasRemoteFrameRef.current) {
             failBeforeFirstFrame(new Error('Pro disconnected before delivering video output.'));
           } else if (!restartInFlightRef.current && isStreamingRef.current) {
-            void restartRealtimeSessionRef.current?.('decart-disconnected');
+            void restartRealtimeSessionRef.current?.('vidu-disconnected');
           }
         }
       };
 
-      const realtimeSession = await client.realtime.connect(stream, {
-        model,
+      const realtimeSession = await client.connect(stream, {
+        apiKey: apiToken,
+        liveId: options?.liveId,
+        renderUid: options?.renderUid,
+        rtc: options?.rtc,
+        modelName: model,
         mirror: 'auto',
         resolution: '720p',
         onConnectionChange: handleConnectionChange,
@@ -2042,21 +2056,17 @@ function Dashboard() {
 
       const handleError = (error: unknown) => {
         const hadFirstFrame = firstFrameDelivered;
-        console.error('[Decart] realtime error:', error);
+        console.error('[Vidu] realtime error:', error);
         failBeforeFirstFrame(error);
         if (hadFirstFrame) {
           setDashboardError({
             title: 'Pro stream interrupted',
-            message: getDecartRealtimeUserMessage(error),
+            message: getViduRealtimeUserMessage(error),
           });
         }
       };
       realtimeSession.on('error', handleError);
 
-      // Establish transport before requesting generation. Sending an image in
-      // initialState makes provider-side moderation, quota, and credit errors
-      // look like reconnectable handshake failures inside the SDK. Applying
-      // the initial input after connect surfaces those permanent errors at once.
       setUiStatus('Preparing Pro output...');
       const initialUpdatePromise = realtimeSession.set(initialInput);
       void initialUpdatePromise.catch(() => {});
@@ -2087,7 +2097,7 @@ function Dashboard() {
       setUiStatus('Preparing Pro output...');
       setStreamMetrics(createEmptyStreamMetrics());
       lastAppliedTransformRef.current = initialTransform;
-      console.log('[Decart] Lucy 2.5 startup state acknowledged.');
+      console.log('[Vidu] S2-Editing startup state acknowledged.');
 
       await withTimeout(
         firstFramePromise,
@@ -2106,8 +2116,8 @@ function Dashboard() {
       if (firstFrameReadyRef.current === confirmFirstFrame) {
         firstFrameReadyRef.current = null;
       }
-      const errorMessage = getRealtimeSdkErrorMessage(error) || 'Unknown Decart SDK error';
-      console.error(`[Decart] SDK error: ${errorMessage}`);
+      const errorMessage = getRealtimeSdkErrorMessage(error) || 'Unknown Vidu SDK error';
+      console.error(`[Vidu] SDK error: ${errorMessage}`);
       if (realtimeClientRef.current === activeRealtimeClient) {
         realtimeClientRef.current = null;
       }
@@ -2124,20 +2134,29 @@ function Dashboard() {
     updateMorphlyCamPlaceholder,
     updateMorphlyCamStatus,
   ]);
+  const connectToDecart = useCallback((...args: Parameters<typeof connectToVidu>) => connectToVidu(...args), [connectToVidu]);
+  void connectToDecart;
 
   const connectToRealtimeProvider = useCallback(async (
     provider: RealtimeProvider,
     stream: MediaStream,
     apiToken: string,
     initialTransform: TransformState,
-    options?: { isRecovery?: boolean; modelName?: string },
+    options?: {
+      isRecovery?: boolean;
+      modelName?: string;
+      liveId?: string;
+      renderUid?: string;
+      rtc?: Record<string, unknown> | null;
+    },
   ) => {
-    if (provider === 'decart') {
-      return connectToDecart(stream, apiToken, initialTransform, {
+    if (provider === VIDU_REALTIME_PROVIDER || (provider as string) === 'decart') {
+      return connectToVidu(stream, apiToken, initialTransform, {
         isRecovery: options?.isRecovery,
-        modelName: options?.modelName === DECART_REALTIME_MODEL
-          ? DECART_REALTIME_MODEL
-          : DECART_REALTIME_MODEL,
+        modelName: VIDU_REALTIME_MODEL,
+        liveId: options?.liveId,
+        renderUid: options?.renderUid,
+        rtc: options?.rtc,
       });
     }
 
@@ -2147,7 +2166,7 @@ function Dashboard() {
         ? XMAX_REALTIME_MODEL
         : XMAX_REALTIME_MODEL,
     });
-  }, [connectToDecart, connectToXmax]);
+  }, [connectToVidu, connectToXmax]);
 
   const restartRealtimeSession = useCallback(async (
     reason: string,
@@ -2355,11 +2374,14 @@ function Dashboard() {
     safelyStopSessionRef.current = safelyStopSession;
   }, [safelyStopSession]);
 
+  const isDevOrPreview = typeof import.meta !== 'undefined' &&
+    (import.meta.env.VITE_LOCAL_PREVIEW === 'true' || import.meta.env.LOCAL_PREVIEW === 'true' || import.meta.env.DEV);
+
   // Polls /api/session-status every 5 s while streaming.
   // The server computes the live remaining balance from recorded generation time.
   // Credits are deducted server-side by end-session.
   const pollSessionStatus = useCallback(async () => {
-    if (!user?.id) return;
+    if (!user?.id || isDevOrPreview || user.id === '00000000-0000-0000-0000-000000000001') return;
     try {
       const response = await apiRequest<{
         credits: number;
@@ -2381,7 +2403,7 @@ function Dashboard() {
     } catch (error) {
       console.error('Poll error:', error);
     }
-  }, [handleStop, setCredits, user?.id]);
+  }, [handleStop, isDevOrPreview, setCredits, user?.id]);
 
   const refreshCameras = useCallback(async (
     options?: { requestPermission?: boolean; notifyIfMissing?: boolean },
@@ -2430,9 +2452,7 @@ function Dashboard() {
 
       const nextSelection = physicalIds.has(storedSelection)
         ? storedSelection
-        : result.physicalCameras.length === 1
-          ? result.physicalCameras[0].deviceId
-          : '';
+        : (result.physicalCameras[0]?.deviceId || '');
 
       selectedCameraIdRef.current = nextSelection;
       setSelectedCameraId(nextSelection);
@@ -2679,11 +2699,11 @@ function Dashboard() {
       return 'Upload a reference image before starting.';
     }
     if (isValidatingImage) return 'Morphly is checking the reference image.';
-    if (credits < minCreditsToStart) {
+    if (!isDevOrPreview && credits < minCreditsToStart) {
       return 'You do not have enough credits. Buy credits to continue.';
     }
     if (!isEngineReady) return engineLoadError || 'The Morphly engine is not ready yet.';
-    if (isUpdaterBlocking) return 'Wait for the application update process to finish.';
+    if (!isDevOrPreview && isUpdaterBlocking) return 'Wait for the application update process to finish.';
     if (isLoading) return 'Morphly is already starting.';
     if (isStreaming) return 'Morphly is already streaming.';
     return null;
@@ -2704,10 +2724,10 @@ function Dashboard() {
     if (!isEngineReady) {
       throw new Error(engineLoadError || 'The Morphly engine is not ready yet.');
     }
-    if (credits < minCreditsToStart) {
+    if (!isDevOrPreview && credits < minCreditsToStart) {
       throw new Error('You do not have enough credits. Buy credits to continue.');
     }
-    if (isUpdaterBlocking) {
+    if (!isDevOrPreview && isUpdaterBlocking) {
       throw new Error('Wait for the application update process to finish.');
     }
 
@@ -2868,7 +2888,9 @@ function Dashboard() {
           const providerConnectStartedAt = performance.now();
           realtimeClient = await withTimeout(
             connectToRealtimeProvider(requestedProvider, stream, sessionToken, getDesiredTransformState(), {
-              modelName: realtimeModel,
+              liveId: startResponse.liveId,
+              renderUid: startResponse.renderUid,
+              rtc: startResponse.rtc,
             }),
             AI_CONNECT_TIMEOUT_MS[requestedProvider],
             `${requestedProviderLabel} connection timed out after ${AI_CONNECT_TIMEOUT_MS[requestedProvider] / 1000}s`,
@@ -3005,7 +3027,7 @@ function Dashboard() {
     const nextProvider = resolveRealtimeProvider(provider);
     setSelectedProvider(nextProvider);
     setRuntimeModeCap('hd');
-    if (nextProvider === DECART_REALTIME_PROVIDER) {
+    if (nextProvider === VIDU_REALTIME_PROVIDER || (nextProvider as string) === 'decart') {
       setIsProRateNoticeVisible(true);
     }
   };
@@ -3194,7 +3216,7 @@ function Dashboard() {
                   Pro uses more credits
                 </h2>
                 <p id="pro-rate-notice-message" className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Switching to Pro increases the amount of credits being deducted. Pro deducts {getCreditRatePerSecond(false, false, DECART_REALTIME_PROVIDER)} credits per second — double the Plus rate ({getCreditRatePerSecond(false, false, DEFAULT_REALTIME_PROVIDER)} credits per second).
+                  Switching to Pro increases the amount of credits being deducted. Pro deducts {getCreditRatePerSecond(false, false, VIDU_REALTIME_PROVIDER)} credits per second — double the Plus rate ({getCreditRatePerSecond(false, false, DEFAULT_REALTIME_PROVIDER)} credits per second).
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-1.5">
@@ -3333,10 +3355,10 @@ function Dashboard() {
             </select>
 
             <select
-              value={selectedProvider === 'decart' ? 'hd' : preferredMode}
+              value={(selectedProvider === VIDU_REALTIME_PROVIDER || (selectedProvider as string) === 'decart') ? 'hd' : preferredMode}
               onChange={(event) => handleModeChange(event.target.value)}
-              disabled={selectedProvider === 'decart'}
-              title={selectedProvider === 'decart'
+              disabled={selectedProvider === VIDU_REALTIME_PROVIDER || (selectedProvider as string) === 'decart'}
+              title={(selectedProvider === VIDU_REALTIME_PROVIDER || (selectedProvider as string) === 'decart')
                 ? 'Pro uses its optimized 720p profile'
                 : 'Select performance mode'}
               aria-label="Select performance mode"

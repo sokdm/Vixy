@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { isLocalPreviewRequest } from '../local-preview.js';
 import { supabaseAdmin, supabaseAdminConfigError } from '../supabase-admin.js';
 import { logErrorEvent, logRequestEvent } from '../../../shared/backend-logger.js';
 import { authenticateRequestUser } from '../../../shared/admin-auth.js';
@@ -146,6 +147,16 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
+    const isLocalPreview = isLocalPreviewRequest(req);
+
+    if (isLocalPreview) {
+      return res.json({
+        success: true,
+        remainingCredits: 999999,
+        cost: 0,
+      });
+    }
+
     if (!supabaseAdmin) {
       return res.status(503).json({ success: false, message: supabaseAdminConfigError || 'Supabase admin is not configured' });
     }

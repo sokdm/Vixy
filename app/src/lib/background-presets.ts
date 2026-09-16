@@ -1,7 +1,7 @@
 import type { ComponentType } from 'react';
 import { Briefcase, Camera, Home, Trees } from 'lucide-react';
 import { XMAX_CHARX_PROMPT } from './xmax-realtime.ts';
-import type { RealtimeProvider } from './realtime-provider';
+import { type RealtimeProvider, VIDU_REALTIME_PROVIDER } from './realtime-provider.ts';
 
 export interface BackgroundPreset {
   id: string;
@@ -108,13 +108,15 @@ export function buildDecartTransformPrompt(
   return preset.prompt;
 }
 
+export const buildViduTransformPrompt = buildDecartTransformPrompt;
+
 export function buildRealtimeTransformPrompt(
   provider: RealtimeProvider,
   hasReferenceImage: boolean,
   presetId: string,
   customText: string = '',
 ): string {
-  return provider === 'decart'
+  return (provider === VIDU_REALTIME_PROVIDER || (provider as string) === 'decart')
     ? buildDecartTransformPrompt(hasReferenceImage, presetId, customText)
     : buildXmaxTransformPrompt(hasReferenceImage, presetId, customText);
 }

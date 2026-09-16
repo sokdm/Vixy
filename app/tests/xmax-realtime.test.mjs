@@ -99,7 +99,7 @@ test('the dashboard keeps Xmax checked uploads, X2 context, and explicit 720p st
   assert.match(dashboard, /onStateChange:/);
   assert.match(dashboard, /await withTimeout\(\s*firstFramePromise/);
   assert.match(dashboard, /lastRemoteFrameAtRef\.current = Date\.now\(\)/);
-  assert.match(dashboard, /import\('@decartai\/sdk'\)/);
+  assert.match(dashboard, /import\('@\/lib\/vidu-realtime'\)/);
   assert.doesNotMatch(viteConfig, /optimizeDeps[\s\S]*@decartai\/sdk/);
 });
 

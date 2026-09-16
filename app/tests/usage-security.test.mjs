@@ -65,26 +65,23 @@ test('Xmax temporary keys are credit-capped, short-lived, rate-limited and attri
   assert.match(startSession, /TOKEN_MINT_LIMIT_PER_WINDOW/);
   assert.match(startSession, /start-session\.unverified_wallet_blocked/);
   assert.match(startSession, /hasWalletCreditProvenance/);
-  assert.match(startSession, /'decart_token' : 'xmax_key'/);
-  assert.match(startSession, /provider === 'decart'/);
+  assert.match(startSession, /vidu_token/);
+  assert.match(startSession, /provider === 'vidu'/);
 });
 
-test('Decart receives only a short-lived, model-scoped client token', () => {
-  assert.match(startSession, /process\.env\.DECART_API_KEY/);
-  assert.match(startSession, /createDecartClient\(\{ apiKey \}\)/);
-  assert.match(startSession, /client\.tokens\.create/);
-  assert.match(startSession, /allowedModels: \[DECART_REALTIME_MODEL\]/);
-  assert.match(startSession, /maxSessionDuration: sessionLimit/);
-  assert.match(startSession, /allowedOrigins\.length > 0/);
-  assert.match(startSession, /DECART_CLIENT_TOKEN_GRACE_SECONDS = 120/);
-  assert.match(startSession, /Math\.min\(3600, sessionLimit \+ DECART_CLIENT_TOKEN_GRACE_SECONDS\)/);
-  assert.match(startSession, /decart_token/);
+test('Vidu receives only scoped real-time session credentials', () => {
+  assert.match(startSession, /process\.env\.VIDU_API_KEY/);
+  assert.match(startSession, /\/live\/s_editing\/realtime/);
+  assert.match(startSession, /VIDU_TOKEN_MAX_ATTEMPTS = 2/);
+  assert.match(startSession, /sessionLimit/);
+  assert.match(startSession, /vidu_token/);
 });
 
 test('Xmax remains the default realtime provider', () => {
   assert.equal(normalizeRealtimeProvider(undefined), 'xmax');
   assert.equal(normalizeRealtimeProvider('unknown'), 'xmax');
-  assert.equal(normalizeRealtimeProvider('decart'), 'decart');
+  assert.equal(normalizeRealtimeProvider('vidu'), 'vidu');
+  assert.equal(normalizeRealtimeProvider('decart'), 'vidu');
 });
 
 test('Xmax web session issuance requires a canonical HTTP origin', () => {

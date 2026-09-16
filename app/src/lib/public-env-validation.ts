@@ -14,6 +14,9 @@ export function validatePublicBuildEnvironment(
   environment: PublicBuildEnvironment,
   { requireHttps = true }: { requireHttps?: boolean } = {},
 ): void {
+  if (!requireHttps && (environment.VITE_LOCAL_PREVIEW === 'true' || environment.LOCAL_PREVIEW === 'true')) {
+    return;
+  }
   const supabaseUrl = normalize(environment.VITE_SUPABASE_URL);
   const supabaseAnonKey = normalize(environment.VITE_SUPABASE_ANON_KEY);
   const errors: string[] = [];

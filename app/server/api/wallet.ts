@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { isLocalPreviewRequest } from '../local-preview.js';
 import { supabaseAdmin, supabaseAdminConfigError } from '../supabase-admin.js';
 import { logErrorEvent, logRequestEvent } from '../../../shared/backend-logger.js';
 import { authenticateRequestUser } from '../../../shared/admin-auth.js';
@@ -10,6 +11,17 @@ export default async function handler(req, res) {
   
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+
+  const isLocalPreview = isLocalPreviewRequest(req);
+
+  if (isLocalPreview) {
+    return res.status(200).json({
+      balance: 10000,
+      credits: 999999,
+      transactions: [],
+    });
+  }
+
   if (!supabaseAdmin) {
     return res.status(200).json({
       balance: 0,

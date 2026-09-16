@@ -38,6 +38,19 @@ function normalizeAmount(value) {
 }
 
 const REPORTING_PAGE_SIZE = 1000;
+// Row pages requested concurrently. Admin reports read several large tables and
+// Vercel caps these functions at 30s (see vercel.json), so pages are fetched in
+// parallel batches instead of one blocking round-trip at a time.
+const REPORTING_PAGE_CONCURRENCY = 4;
+// Safety ceiling per source so a single runaway table cannot exhaust the
+// function budget. Reports flag this through `dataHealth.truncated`.
+const REPORTING_SOURCE_ROW_LIMIT = 50000;
+// Only the columns these reports actually read. `select('*')` pulled whole rows
+// for every session and transaction, which dominated the time budget.
+const SESSION_REPORT_COLUMNS = 'user_id, status, created_at, start_time';
+const TRANSACTION_REPORT_COLUMNS = 'user_id, status, type, reference, description, amount, amount_naira, package_id, package_name_snapshot, package_price_snapshot_ngn, gateway_fee_ngn, refund_status, verified_at, created_at';
+const PROFILE_REPORT_COLUMNS = 'id, account_status, created_at';
+const USER_EVENT_REPORT_COLUMNS = 'user_id, platform, acquisition_source, created_at';
 const SYSTEM_LOG_SOURCE_LIMIT = 5000;
 const SUCCESSFUL_PAYMENT_STATUSES = new Set(['success', 'successful', 'succeeded', 'completed', 'paid', 'verified']);
 const PURCHASE_TRANSACTION_TYPES = new Set(['credit', 'credit_purchase', 'purchase', 'payment']);
@@ -57,24 +70,63 @@ function normalizeReportOptions(options = {}) {
   };
 }
 
+async function fetchRowPage(buildQuery, sourceName, from, to) {
+  const { data, error } = await buildQuery().range(from, to);
+  if (error) {
+    throw new Error(`Unable to read ${sourceName}: ${error.message || error.code || 'Supabase query failed'}`);
+  }
+  return data || [];
+}
+
 async function fetchAllRows(buildQuery, sourceName, maxRows = Number.POSITIVE_INFINITY) {
-  const rows = [];
   const boundedMaxRows = Number.isFinite(maxRows)
     ? Math.max(0, Math.floor(maxRows))
     : Number.POSITIVE_INFINITY;
-  for (let from = 0; from < boundedMaxRows; from += REPORTING_PAGE_SIZE) {
-    const to = Number.isFinite(boundedMaxRows)
-      ? Math.min(from + REPORTING_PAGE_SIZE - 1, boundedMaxRows - 1)
-      : from + REPORTING_PAGE_SIZE - 1;
-    const { data, error } = await buildQuery().range(from, to);
-    if (error) {
-      throw new Error(`Unable to read ${sourceName}: ${error.message || error.code || 'Supabase query failed'}`);
+  const rows = [];
+  let nextFrom = 0;
+
+  while (nextFrom < boundedMaxRows) {
+    const ranges = [];
+    for (let slot = 0; slot < REPORTING_PAGE_CONCURRENCY && nextFrom < boundedMaxRows; slot += 1) {
+      const to = Number.isFinite(boundedMaxRows)
+        ? Math.min(nextFrom + REPORTING_PAGE_SIZE - 1, boundedMaxRows - 1)
+        : nextFrom + REPORTING_PAGE_SIZE - 1;
+      ranges.push([nextFrom, to]);
+      nextFrom = to + 1;
     }
-    const page = data || [];
-    rows.push(...page);
-    if (page.length < to - from + 1 || rows.length >= boundedMaxRows) break;
+
+    const pages = await Promise.all(
+      ranges.map(([from, to]) => fetchRowPage(buildQuery, sourceName, from, to)),
+    );
+
+    let reachedEnd = false;
+    pages.forEach((page, index) => {
+      rows.push(...page);
+      const [from, to] = ranges[index];
+      if (page.length < to - from + 1) reachedEnd = true;
+    });
+
+    if (reachedEnd || rows.length >= boundedMaxRows) break;
   }
-  return rows;
+
+  return Number.isFinite(boundedMaxRows) ? rows.slice(0, boundedMaxRows) : rows;
+}
+
+function isMissingColumnError(error) {
+  return /42703|PGRST(100|103|204)|column .* does not exist|unknown column/i.test(
+    String(error?.message || error),
+  );
+}
+
+// Narrow column lists fail on deployments that predate a column, so fall back to
+// the tolerant `*` projection instead of breaking the entire report.
+async function fetchReportRows(buildNarrowQuery, buildWideQuery, sourceName, maxRows) {
+  try {
+    return await fetchAllRows(buildNarrowQuery, sourceName, maxRows);
+  } catch (error) {
+    if (!isMissingColumnError(error)) throw error;
+    return fetchAllRows(buildWideQuery, sourceName, maxRows);
+  }
 }
 
 async function fetchOptionalRows(buildQuery, sourceName, maxRows = Number.POSITIVE_INFINITY) {
@@ -276,7 +328,45 @@ function buildGrowthSeries(days, signups, events, sessions, purchases) {
 
 export async function getAdminOverview(supabaseAdmin, options = {}) {
   const filters = normalizeReportOptions(options);
-  const authUsers = await listAllAuthUsers(supabaseAdmin);
+  // The auth listing is fetched alongside the table reads instead of ahead of
+  // them; running it first added a fully serial leg to every request.
+  const [authUsers, wallets, sessions, transactions, profiles, analyticsResult, errorResult] = await Promise.all([
+    listAllAuthUsers(supabaseAdmin),
+    fetchAllRows(
+      () => supabaseAdmin.from('wallets').select('user_id, credits').order('user_id'),
+      'wallets',
+      REPORTING_SOURCE_ROW_LIMIT,
+    ),
+    fetchReportRows(
+      () => supabaseAdmin.from('sessions').select(SESSION_REPORT_COLUMNS).gte('created_at', filters.since).order('created_at', { ascending: true }),
+      () => supabaseAdmin.from('sessions').select('*').gte('created_at', filters.since).order('created_at', { ascending: true }),
+      'sessions',
+      REPORTING_SOURCE_ROW_LIMIT,
+    ),
+    fetchReportRows(
+      () => supabaseAdmin.from('transactions').select(TRANSACTION_REPORT_COLUMNS).gte('created_at', filters.since).order('created_at', { ascending: true }),
+      () => supabaseAdmin.from('transactions').select('*').gte('created_at', filters.since).order('created_at', { ascending: true }),
+      'transactions',
+      REPORTING_SOURCE_ROW_LIMIT,
+    ),
+    fetchReportRows(
+      () => supabaseAdmin.from('users').select(PROFILE_REPORT_COLUMNS).order('created_at', { ascending: true }),
+      () => supabaseAdmin.from('users').select('*').order('created_at', { ascending: true }),
+      'users',
+      REPORTING_SOURCE_ROW_LIMIT,
+    ),
+    fetchOptionalRows(
+      queryAnalyticsEvents(supabaseAdmin, filters, 'event_name, user_id, installation_id, platform, acquisition_source, created_at'),
+      'analytics_events',
+      REPORTING_SOURCE_ROW_LIMIT,
+    ),
+    fetchOptionalRows(() => {
+      let query = supabaseAdmin.from('error_logs').select('occurrences, severity, platform, user_id, last_seen_at').gte('last_seen_at', filters.since);
+      if (filters.platform) query = query.eq('platform', filters.platform);
+      return query;
+    }, 'error_logs', REPORTING_SOURCE_ROW_LIMIT),
+  ]);
+
   if (authUsers.length === 0) {
     return {
       totalUsers: 0,
@@ -286,34 +376,6 @@ export async function getAdminOverview(supabaseAdmin, options = {}) {
       activeSessions: 0,
     };
   }
-
-  const [wallets, sessions, transactions, profiles, analyticsResult, errorResult] = await Promise.all([
-    fetchAllRows(
-      () => supabaseAdmin.from('wallets').select('user_id, credits').order('user_id'),
-      'wallets',
-    ),
-    fetchAllRows(
-      () => supabaseAdmin.from('sessions').select('*').gte('created_at', filters.since).order('created_at', { ascending: true }),
-      'sessions',
-    ),
-    fetchAllRows(
-      () => supabaseAdmin.from('transactions').select('*').gte('created_at', filters.since).order('created_at', { ascending: true }),
-      'transactions',
-    ),
-    fetchAllRows(
-      () => supabaseAdmin.from('users').select('*').order('created_at', { ascending: true }),
-      'users',
-    ),
-    fetchOptionalRows(
-      queryAnalyticsEvents(supabaseAdmin, filters, 'event_name, user_id, installation_id, platform, acquisition_source, created_at'),
-      'analytics_events',
-    ),
-    fetchOptionalRows(() => {
-      let query = supabaseAdmin.from('error_logs').select('occurrences, severity, platform, user_id, last_seen_at').gte('last_seen_at', filters.since);
-      if (filters.platform) query = query.eq('platform', filters.platform);
-      return query;
-    }, 'error_logs'),
-  ]);
 
   const morphlyUserIds = buildMorphlyUserIdSet(authUsers, { profiles, wallets, sessions, transactions });
   const morphlyAuthUsers = authUsers.filter((user) => morphlyUserIds.has(user.id));
@@ -393,31 +455,53 @@ export async function getAdminOverview(supabaseAdmin, options = {}) {
       analyticsEvents: events.length,
       transactionsRead: filteredTransactions.length,
       sessionsRead: filteredSessions.length,
+      // True when a source hit REPORTING_SOURCE_ROW_LIMIT, so the figures above
+      // cover only the newest rows rather than the whole period.
+      truncated: analyticsResult.truncated
+        || errorResult.truncated
+        || [wallets, sessions, transactions, profiles].some(
+          (rows) => rows.length >= REPORTING_SOURCE_ROW_LIMIT,
+        ),
     },
   };
 }
 
 export async function listAdminUsers(supabaseAdmin, options = {}) {
   const filters = normalizeReportOptions(options);
-  const authUsers = await listAllAuthUsers(supabaseAdmin);
+  const [authUsers, wallets, admins, profiles, transactions, sessions, analyticsResult] = await Promise.all([
+    listAllAuthUsers(supabaseAdmin),
+    fetchAllRows(() => supabaseAdmin.from('wallets').select('user_id, credits').order('user_id'), 'wallets', REPORTING_SOURCE_ROW_LIMIT),
+    fetchAllRows(() => supabaseAdmin.from('admin_users').select('user_id, role').eq('is_active', true).order('user_id'), 'admin_users', REPORTING_SOURCE_ROW_LIMIT),
+    fetchReportRows(
+      () => supabaseAdmin.from('users').select(PROFILE_REPORT_COLUMNS).order('created_at', { ascending: false }),
+      () => supabaseAdmin.from('users').select('*').order('created_at', { ascending: false }),
+      'users',
+      REPORTING_SOURCE_ROW_LIMIT,
+    ),
+    fetchReportRows(
+      () => supabaseAdmin.from('transactions').select(TRANSACTION_REPORT_COLUMNS).gte('created_at', filters.since).order('created_at', { ascending: false }),
+      () => supabaseAdmin.from('transactions').select('*').gte('created_at', filters.since).order('created_at', { ascending: false }),
+      'transactions',
+      REPORTING_SOURCE_ROW_LIMIT,
+    ),
+    fetchReportRows(
+      () => supabaseAdmin.from('sessions').select(SESSION_REPORT_COLUMNS).gte('created_at', filters.since).order('created_at', { ascending: false }),
+      () => supabaseAdmin.from('sessions').select('*').gte('created_at', filters.since).order('created_at', { ascending: false }),
+      'sessions',
+      REPORTING_SOURCE_ROW_LIMIT,
+    ),
+    // Ascending order is required: latestEventByUserId below is last-write-wins,
+    // so reversing this would resolve every user's "latest" event to the oldest.
+    fetchOptionalRows(
+      queryAnalyticsEvents(supabaseAdmin, filters, USER_EVENT_REPORT_COLUMNS),
+      'analytics_events',
+      REPORTING_SOURCE_ROW_LIMIT,
+    ),
+  ]);
+
   if (authUsers.length === 0) {
     return [];
   }
-
-  const [wallets, admins, profiles, transactions, sessions, analyticsResult] = await Promise.all([
-    fetchAllRows(() => supabaseAdmin.from('wallets').select('user_id, credits').order('user_id'), 'wallets'),
-    fetchAllRows(() => supabaseAdmin.from('admin_users').select('user_id, role').eq('is_active', true).order('user_id'), 'admin_users'),
-    fetchAllRows(() => supabaseAdmin.from('users').select('*').order('created_at', { ascending: false }), 'users'),
-    fetchAllRows(
-      () => supabaseAdmin.from('transactions').select('*').gte('created_at', filters.since).order('created_at', { ascending: false }),
-      'transactions',
-    ),
-    fetchAllRows(
-      () => supabaseAdmin.from('sessions').select('*').gte('created_at', filters.since).order('created_at', { ascending: false }),
-      'sessions',
-    ),
-    fetchOptionalRows(queryAnalyticsEvents(supabaseAdmin, filters), 'analytics_events'),
-  ]);
 
   const walletByUserId = new Map(wallets.map((wallet) => [wallet.user_id, normalizeCredits(wallet.credits)]));
   const adminByUserId = new Map(admins.map((admin) => [admin.user_id, admin.role]));

@@ -38,10 +38,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const DEV_MOCK_USER: User = {
+  id: '00000000-0000-0000-0000-000000000001',
+  name: 'Local Preview User',
+  email: 'local@morphly.fun',
+  isAdmin: false,
+  adminRole: null,
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const isLocalPreview = import.meta.env.DEV && import.meta.env.VITE_LOCAL_PREVIEW === 'true';
+  const [user, setUser] = useState<User | null>(isLocalPreview ? DEV_MOCK_USER : null);
   const [loading, setLoading] = useState(false);
-  const [initializing, setInitializing] = useState(true);
+  const [initializing, setInitializing] = useState(!isLocalPreview);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const hydrationRef = useRef<{ token: string; promise: Promise<User> } | null>(null);
@@ -70,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json();
       return {
         isAdmin: Boolean(data?.isAdmin),
-        adminRole: typeof data?.role === 'string' ? data.role : null,
+        adminRole: data?.role ?? null,
       };
     } catch (adminError) {
       console.warn('Failed to resolve admin access:', adminError);
@@ -79,13 +88,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Helper to map Supabase User
-  const formatUser = (su: SupabaseUser, adminState?: { isAdmin: boolean; adminRole: string | null }): User => {
+  const formatUser = (supabaseUser: SupabaseUser, adminState?: { isAdmin: boolean; adminRole: string | null }): User => {
+    const metadata = supabaseUser.user_metadata || {};
     return {
-      id: su.id,
-      name: su.user_metadata?.name || su.email?.split('@')[0] || 'User',
-      email: su.email || '',
-      avatar: su.user_metadata?.avatar_url,
-      createdAt: su.created_at,
+      id: supabaseUser.id,
+      name: metadata.name || metadata.full_name || supabaseUser.email?.split('@')[0] || 'User',
+      email: supabaseUser.email || '',
+      avatar: metadata.avatar_url || metadata.picture,
+      createdAt: supabaseUser.created_at,
       isAdmin: Boolean(adminState?.isAdmin),
       adminRole: adminState?.adminRole ?? null,
     };
@@ -133,9 +143,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const hydrateUserFromSession = useCallback(async (currentSession: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']) => {
     if (!currentSession?.user) {
       hydrationRef.current = null;
-      setUser(null);
+      if (isLocalPreview) {
+        setUser(DEV_MOCK_USER);
+      } else {
+        setUser(null);
+      }
       setInitializing(false);
-      return null;
+      return isLocalPreview ? DEV_MOCK_USER : null;
     }
 
     // INITIAL_SESSION, SIGNED_IN and login can all arrive for the same token.
@@ -175,9 +189,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (active) void hydrateUserFromSession(currentSession);
     }).catch(() => {
       if (!active) return;
-      setUser(null);
+      setUser(isLocalPreview ? DEV_MOCK_USER : null);
       setInitializing(false);
-      setError('Unable to restore your session. Please sign in again.');
+      if (!isLocalPreview) {
+        setError('Unable to restore your session. Please sign in again.');
+      }
     });
 
     // Listen for auth changes

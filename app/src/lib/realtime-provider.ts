@@ -1,11 +1,15 @@
-export const DEFAULT_REALTIME_PROVIDER = 'xmax' as const;
+export const DEFAULT_REALTIME_PROVIDER = 'vidu' as const;
 export const XMAX_REALTIME_PROVIDER = 'xmax' as const;
-export const DECART_REALTIME_PROVIDER = 'decart' as const;
-export const DECART_REALTIME_MODEL = 'lucy-2.5' as const;
+export const VIDU_REALTIME_PROVIDER = 'vidu' as const;
+export const VIDU_REALTIME_MODEL = 's2-editing' as const;
+
+// Legacy aliases for backward compatibility
+export const DECART_REALTIME_PROVIDER = VIDU_REALTIME_PROVIDER;
+export const DECART_REALTIME_MODEL = VIDU_REALTIME_MODEL;
 
 export type RealtimeProvider =
   | typeof XMAX_REALTIME_PROVIDER
-  | typeof DECART_REALTIME_PROVIDER;
+  | typeof VIDU_REALTIME_PROVIDER;
 
 export const REALTIME_PROVIDER_OPTIONS: ReadonlyArray<{
   value: RealtimeProvider;
@@ -18,36 +22,37 @@ export const REALTIME_PROVIDER_OPTIONS: ReadonlyArray<{
     detail: 'X2 realtime',
   },
   {
-    value: DECART_REALTIME_PROVIDER,
+    value: VIDU_REALTIME_PROVIDER,
     label: 'Pro',
-    detail: 'Lucy 2.5',
+    detail: 'Vidu S2-Editing',
   },
 ];
 
 export function isRealtimeProvider(value: unknown): value is RealtimeProvider {
-  return value === XMAX_REALTIME_PROVIDER || value === DECART_REALTIME_PROVIDER;
+  return value === XMAX_REALTIME_PROVIDER || value === VIDU_REALTIME_PROVIDER || value === 'decart';
 }
 
-export function getRealtimeProviderLabel(provider: RealtimeProvider): string {
-  return provider === DECART_REALTIME_PROVIDER ? 'Pro' : 'Plus';
+export function getRealtimeProviderLabel(provider: RealtimeProvider | 'decart'): string {
+  return provider === VIDU_REALTIME_PROVIDER || provider === 'decart' ? 'Pro' : 'Plus';
 }
 
 export function resolveRealtimeProvider(
   value: unknown,
   fallback: RealtimeProvider = DEFAULT_REALTIME_PROVIDER,
 ): RealtimeProvider {
-  return isRealtimeProvider(value) ? value : fallback;
+  if (value === 'decart') return VIDU_REALTIME_PROVIDER;
+  return isRealtimeProvider(value) ? (value as RealtimeProvider) : fallback;
 }
 
-export function resolveRealtimeModel(provider: RealtimeProvider, value: unknown): string {
-  if (provider === DECART_REALTIME_PROVIDER) {
-    return value === DECART_REALTIME_MODEL ? value : DECART_REALTIME_MODEL;
+export function resolveRealtimeModel(provider: RealtimeProvider | 'decart', value: unknown): string {
+  if (provider === VIDU_REALTIME_PROVIDER || provider === 'decart') {
+    return value === VIDU_REALTIME_MODEL ? value : VIDU_REALTIME_MODEL;
   }
 
   return value === 'x2.0' ? value : 'x2.0';
 }
 
-export function getDecartRealtimeUserMessage(
+export function getViduRealtimeUserMessage(
   error: unknown,
   fallback = 'Pro could not complete that realtime request. Please try again.',
 ): string {
@@ -69,11 +74,14 @@ export function getDecartRealtimeUserMessage(
   if (/token|auth|unauthor|expired|forbidden/.test(diagnostic)) {
     return 'The Pro session expired. Stop the stream and start it again.';
   }
-  if (/webrtc|network|socket|connect|ice|timeout/.test(diagnostic)) {
+  if (/webrtc|rtc|network|socket|connect|ice|timeout/.test(diagnostic)) {
     return 'The Pro connection was interrupted. Morphly is trying to recover it.';
   }
 
   return (message || fallback)
     .replace(/\bXmax\b/gi, 'Plus')
-    .replace(/\bDecart\b/gi, 'Pro');
+    .replace(/\bDecart\b/gi, 'Pro')
+    .replace(/\bVidu\b/gi, 'Pro');
 }
+
+export const getDecartRealtimeUserMessage = getViduRealtimeUserMessage;

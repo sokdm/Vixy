@@ -48,14 +48,21 @@ const TRANSACTIONS_KEY = 'morphly_transactions';
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const [balance, setBalanceState] = useState(0);
-  const [credits, setCreditsState] = useState(0);
+  const isLocalPreview = import.meta.env.DEV && import.meta.env.VITE_LOCAL_PREVIEW === 'true';
+  const [balance, setBalanceState] = useState(isLocalPreview ? 10000 : 0);
+  const [credits, setCreditsState] = useState(isLocalPreview ? 999999 : 0);
   const [sessionStatus, setSessionStatus] = useState<'LIVE' | 'IDLE'>('IDLE');
   const [isLoading, setLoading] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
+    if (isLocalPreview || user?.id === '00000000-0000-0000-0000-000000000001') {
+      setBalanceState(10000);
+      setCreditsState(999999);
+      return;
+    }
+
     if (user?.id) {
       apiFetchWithAuth(`/wallet?userId=${user.id}`)
         .then(async res => {
@@ -92,7 +99,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         })
         .catch(err => console.warn('Failed to sync wallet data:', err));
     }
-  }, [user?.id]);
+  }, [isLocalPreview, user?.id]);
 
   const setBalance = useCallback((newBalance: number) => {
     setBalanceState(newBalance);

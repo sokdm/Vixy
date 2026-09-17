@@ -16,7 +16,7 @@ let systemLogs = [];
 const baseMetrics = {
   downloads: 0, signups: 0, activated: 0, buyers: 0, repeatBuyers: 0,
   revenue: 0, providerCost: 0, fees: 0, refunds: 0, advertising: 0,
-  sessions: 0, failedSessions: 0, crashes: 0, apiRequests: 0, apiErrors: 0,
+  sessions: 0, failedSessions: 0, crashes: 0, apiRequests: 0, apiErrors: 0, pendingPayments: 0,
   growthSeries: []
 };
 
@@ -26,6 +26,7 @@ const state = {
   platform: "all",
   source: "all",
   loadedAt: null,
+  totalUsers: null,
   loadErrors: {},
   currentAdmin: null,
   selectedUserId: null,
@@ -239,28 +240,8 @@ const AdminAPI = {
 
 function filteredMetrics() {
   const data = { ...baseMetrics };
-  const selectedTransactions = filteredTransactions();
-  const successful = selectedTransactions.filter(isSuccessfulTransaction);
-  const purchaseCountByUser = new Map();
-  successful.forEach((transaction) => {
-    if (!transaction.userId) return;
-    purchaseCountByUser.set(transaction.userId, (purchaseCountByUser.get(transaction.userId) || 0) + 1);
-  });
-
-  data.revenue = successful.reduce((sum, transaction) => sum + safeNumber(transaction.amount), 0);
-  data.fees = successful.reduce((sum, transaction) => sum + safeNumber(transaction.gatewayFee), 0);
-  data.refunds = successful
-    .filter((transaction) => !["", "none", "not_refunded"].includes(String(transaction.refundStatus || "").toLowerCase()))
-    .reduce((sum, transaction) => sum + safeNumber(transaction.amount), 0);
-  data.buyers = purchaseCountByUser.size;
-  data.repeatBuyers = [...purchaseCountByUser.values()].filter((count) => count > 1).length;
-
-  const dimensionUsers = filteredUsers();
-  const periodUsers = dimensionUsers.filter((user) => isWithinSelectedPeriod(user.createdAt));
-  if (state.platform !== "all" || state.source !== "all" || periodUsers.length || state.period !== "30") {
-    data.signups = periodUsers.length;
-  }
-
+  // The overview API already applies the selected filters. Hidden reports may
+  // not be loaded (or may belong to older filters), so never derive totals here.
   data.growthSeries = (Array.isArray(baseMetrics.growthSeries) ? baseMetrics.growthSeries : [])
     .filter((item) => isWithinSelectedPeriod(item.date));
   data.grossProfit = data.revenue - data.providerCost - data.fees - data.refunds - data.advertising;
@@ -353,16 +334,14 @@ function renderMoney(data) {
 }
 
 function renderAlerts(data) {
-  const pendingPayments = filteredTransactions().filter((transaction) => transaction.status === "pending").length;
-  const criticalErrors = systemLogs
-    .filter((log) => log.severity === "critical" && isWithinSelectedPeriod(log.timestamp))
-    .reduce((sum, log) => sum + safeNumber(log.count), 0);
+  const pendingPayments = data.pendingPayments;
+  const criticalErrors = data.crashes;
   const alerts = [];
   if (data.failedSessions > 0) {
     alerts.push({ level: "critical", icon: "!", title: "Connection failures recorded", detail: "Failed sessions in the selected period", count: number(data.failedSessions) });
   }
   if (criticalErrors > 0) {
-    alerts.push({ level: "critical", icon: "!", title: "Critical application errors", detail: "Grouped occurrences in the system log", count: number(criticalErrors) });
+    alerts.push({ level: "critical", icon: "!", title: "Critical application errors", detail: "Recorded occurrences in the selected period", count: number(criticalErrors) });
   }
   if (data.signups > data.activated) {
     alerts.push({ level: "warning", icon: "↻", title: "Users awaiting first output", detail: number(data.signups - data.activated) + " signups have not reached a first output", count: percentage(data.activated, data.signups) });
@@ -700,16 +679,14 @@ function renderReferrals() {
 }
 
 function renderAll() {
-  $("#sidebarUserCount").textContent = number(state.users.length);
-  renderOverview();
-  renderUsers();
-  renderUsage();
-  renderReferrals();
-  renderTransactions();
-  renderPackages();
-  renderLogs();
-  renderDeveloper();
-  populateReconciliationOptions();
+  $("#sidebarUserCount").textContent = state.totalUsers === null ? "—" : number(state.totalUsers);
+  const renderView = {
+    overview: renderOverview, users: renderUsers, usage: renderUsage,
+    referrals: renderReferrals, transactions: renderTransactions,
+    packages: renderPackages, logs: renderLogs, developer: renderDeveloper
+  }[state.activeView];
+  if (renderView) renderView();
+  if (state.activeView === "transactions") populateReconciliationOptions();
   $("#lastUpdated").textContent = state.loadedAt ? state.loadedAt.toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "not loaded";
 }
 
@@ -720,11 +697,8 @@ function setView(view) {
   $$("[data-view-panel]").forEach((panel) => panel.classList.toggle("active", panel.dataset.viewPanel === view));
   $("#pageTitle").textContent = view === 'communications' ? 'Customer communications' : titles[view] || "Morphly admin";
   $("#sidebar").classList.remove("open");
-  if (view === "users") renderUsers();
-  if (view === "usage") renderUsage();
-  if (view === "referrals") renderReferrals();
-  if (view === "packages") renderPackages();
-  if (view === "logs") renderLogs();
+  renderAll();
+  void loadLiveData();
 }
 
 function normalizeUserHistoryEntry(entry) {
@@ -1077,14 +1051,16 @@ function bindEvents() {
 let liveDataPromise = null;
 let reloadRequested = false;
 let loadingScope = null;
+let loadingController = null;
 
 function reportScope() {
-  return JSON.stringify([state.period, state.platform, state.source]);
+  return JSON.stringify([state.activeView, state.period, state.platform, state.source]);
 }
 
 function loadLiveData({ force = false } = {}) {
   if (liveDataPromise) {
     if (force || loadingScope !== reportScope()) reloadRequested = true;
+    if (loadingScope !== reportScope()) loadingController?.abort();
     return liveDataPromise;
   }
   liveDataPromise = (async () => {
@@ -1092,17 +1068,24 @@ function loadLiveData({ force = false } = {}) {
     do {
       reloadRequested = false;
       loadingScope = reportScope();
-      result = await loadLiveDataPass(loadingScope);
+      loadingController = new AbortController();
+      result = await loadLiveDataPass(loadingScope, loadingController.signal);
     } while (reloadRequested);
     return result;
   })().finally(() => {
     liveDataPromise = null;
     loadingScope = null;
+    loadingController = null;
   });
   return liveDataPromise;
 }
 
-async function loadLiveDataPass(scope) {
+async function loadLiveDataPass(scope, signal) {
+  const needed = {
+    overview: ["overview"], users: ["users"], usage: ["usage"],
+    referrals: ["referrals"], transactions: ["transactions", "users", "packages"],
+    packages: ["packages"], logs: ["logs"]
+  }[state.activeView] || [];
   const definitions = [
     { key: "overview", path: scopedEndpoint(CONFIG.endpoints.overview) },
     { key: "users", path: scopedEndpoint(CONFIG.endpoints.users) },
@@ -1112,8 +1095,10 @@ async function loadLiveDataPass(scope) {
     { key: "transactions", path: scopedEndpoint(CONFIG.endpoints.transactions) },
     { key: "logs", path: scopedEndpoint(CONFIG.endpoints.logs) },
     { key: "audit", path: CONFIG.endpoints.audit }
-  ];
+  ].filter((definition) => needed.includes(definition.key))
+    .sort((left, right) => needed.indexOf(left.key) - needed.indexOf(right.key));
   state.loadErrors = {};
+  updateLoadWarning();
   let next = 0;
   let completed = 0;
   const refreshButton = $("#refreshDataButton");
@@ -1125,7 +1110,9 @@ async function loadLiveDataPass(scope) {
     while (next < definitions.length && scope === reportScope()) {
       const definition = definitions[next++];
       try {
-        const value = await AdminAPI.request(definition.path);
+        const value = await AdminAPI.request(definition.path, {
+          signal: AbortSignal.any([signal, AbortSignal.timeout(35000)])
+        });
         if (scope !== reportScope()) continue;
         applyLiveResults({ [definition.key]: { status: "fulfilled", value } });
         state.loadedAt = new Date();
@@ -1239,6 +1226,7 @@ function applyLiveResults(results) {
 
   if (results.overview?.status === "fulfilled") {
     const overview = results.overview.value || {};
+    state.totalUsers = safeNumber(overview.totalUsers);
     Object.assign(baseMetrics, {
       downloads: safeNumber(overview.downloads),
       signups: safeNumber(overview.signups ?? overview.totalUsers),
@@ -1253,6 +1241,7 @@ function applyLiveResults(results) {
       sessions: safeNumber(overview.sessions),
       failedSessions: safeNumber(overview.failedSessions),
       crashes: safeNumber(overview.crashes),
+      pendingPayments: safeNumber(overview.pendingPayments),
       apiRequests: safeNumber(overview.apiRequests),
       apiErrors: safeNumber(overview.apiErrors),
       growthSeries: Array.isArray(overview.growthSeries) ? overview.growthSeries : []
@@ -1275,7 +1264,7 @@ async function startAuthenticatedApp() {
     if (document.hidden || liveDataPromise) return;
     try { await loadLiveData(); renderAll(); }
     catch (error) { console.error("Automatic live-data refresh failed", error); }
-  }, 30000);
+  }, 60000);
 }
 
 async function init() {

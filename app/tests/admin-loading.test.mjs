@@ -24,13 +24,32 @@ function harness() {
   const context = vm.createContext({
     window: { location: { origin: 'https://example.test' } },
     document: { querySelector: element, querySelectorAll: () => [] },
-    URL, URLSearchParams, AbortSignal, console,
+    URL, URLSearchParams, AbortSignal, AbortController, console,
   });
   vm.runInContext(source + '\nrenderAll = () => {};', context);
   return { context, element, run: code => vm.runInContext(code, context) };
 }
 
-test('reports render progressively, share duplicate loads and never exceed two active requests', async () => {
+test('overview loads alone and shares duplicate requests', async () => {
+  const h = harness();
+  const task = deferred();
+  const calls = [];
+  h.context.request = path => { calls.push(path); return task.promise; };
+  h.run('AdminAPI.request = request');
+  const load = h.run('loadLiveData()');
+  assert.equal(load, h.run('loadLiveData()'));
+  assert.equal(calls.length, 1);
+  assert.match(calls[0], /admin-overview/);
+  task.resolve({ signups: 42, revenueNGN: 500, buyers: 2, pendingPayments: 3 });
+  await load;
+  assert.equal(h.run('filteredMetrics().signups'), 42);
+  assert.equal(h.run('filteredMetrics().revenue'), 500);
+  assert.equal(h.run('filteredMetrics().buyers'), 2);
+  assert.equal(h.run('filteredMetrics().pendingPayments'), 3);
+  assert.equal(calls.length, 1, 'hidden tabs must not load');
+});
+
+test('transaction dependencies render progressively and never exceed two active requests', async () => {
   const h = harness();
   const calls = [];
   let active = 0, peak = 0;
@@ -40,21 +59,22 @@ test('reports render progressively, share duplicate loads and never exceed two a
     peak = Math.max(peak, ++active);
     return task.promise.finally(() => active--);
   };
-  h.run('AdminAPI.request = request');
+  h.run('AdminAPI.request = request; state.activeView = "transactions"');
   const load = h.run('loadLiveData()');
   assert.equal(load, h.run('loadLiveData()'));
   assert.equal(calls.length, 2);
-  calls[0].resolve({ signups: 42 });
+  assert.match(calls[0].path, /admin-transactions/);
+  calls[0].resolve({ transactions: [{ id: 'payment-1', status: 'pending' }] });
   await tick();
-  assert.equal(h.run('baseMetrics.signups'), 42, 'overview must paint while users is pending');
+  assert.equal(h.run('transactions.length'), 1, 'transactions must paint while users is pending');
   assert.equal(calls.length, 3);
   calls[1].reject(new Error('Database timeout'));
   await tick();
   assert.equal(h.run('state.loadErrors.users'), 'Database timeout');
-  for (let i = 2; i < 8; i++) { calls[i].resolve({}); await tick(); }
+  calls[2].resolve({});
   assert.equal((await load).failures, 1);
   assert.equal(peak, 2);
-  assert.equal(calls.length, 8);
+  assert.equal(calls.length, 3);
   assert.equal(h.element('#refreshDataButton').disabled, false);
 });
 
@@ -65,15 +85,48 @@ test('changed filters discard old responses and queue one fresh load without ove
   h.run('AdminAPI.request = request');
   const load = h.run('loadLiveData()');
   h.run('state.period = "7"; loadLiveData()');
-  assert.equal(calls.length, 2);
-  calls[0].resolve({ signups: 999 }); calls[1].resolve({ users: [] });
+  assert.equal(calls.length, 1);
+  calls[0].resolve({ signups: 999 });
   await tick();
   assert.equal(h.run('baseMetrics.signups'), 0);
-  assert.equal(calls.length, 4);
-  assert.match(calls[2].path, /days=7/);
-  for (let i = 2; i < 10; i++) { calls[i].resolve(i === 2 ? { signups: 7 } : {}); await tick(); }
+  assert.equal(calls.length, 2);
+  assert.match(calls[1].path, /days=7/);
+  calls[1].resolve({ signups: 7 });
   await load;
   assert.equal(h.run('baseMetrics.signups'), 7);
+});
+
+test('changing tabs aborts the obsolete request and loads only the new tab', async () => {
+  const h = harness();
+  const calls = [];
+  h.context.request = (path, { signal }) => {
+    const task = deferred();
+    signal.addEventListener('abort', () => task.reject(signal.reason), { once: true });
+    calls.push({ path, signal, ...task });
+    return task.promise;
+  };
+  h.run('AdminAPI.request = request');
+  const load = h.run('loadLiveData()');
+  h.run('state.activeView = "usage"; loadLiveData()');
+  assert.equal(calls[0].signal.aborted, true);
+  await tick();
+  assert.equal(calls.length, 2);
+  assert.match(calls[1].path, /admin-usage/);
+  calls[1].resolve({ totals: { sessions: 8 } });
+  await load;
+  assert.equal(h.run('state.usage.totals.sessions'), 8);
+  assert.equal(h.run('Object.keys(state.loadErrors).length'), 0);
+});
+
+test('every other tab requests only its own report', async () => {
+  for (const view of ['users', 'usage', 'referrals', 'packages', 'logs', 'developer', 'communications']) {
+    const h = harness();
+    const calls = [];
+    h.context.request = async path => { calls.push(path); return {}; };
+    h.run(`AdminAPI.request = request; state.activeView = "${view}"`);
+    await h.run('loadLiveData()');
+    assert.equal(calls.length, ['developer', 'communications'].includes(view) ? 0 : 1, view);
+  }
 });
 
 test('admin login gives immediate feedback, prevents repeated submissions and recovers from errors', async () => {

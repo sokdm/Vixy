@@ -8,7 +8,7 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPAB
 const nativeFetch = globalThis.fetch?.bind(globalThis);
 
 function shouldLogSupabaseUrl(url) {
-  return typeof url === 'string' && (url.includes('/rest/v1/') || url.includes('/rpc/'));
+  return typeof url === 'string' && (url.includes('/rest/v1/') || url.includes('/rpc/') || url.includes('/auth/v1/'));
 }
 
 function normalizeUrl(input) {
@@ -34,6 +34,8 @@ async function loggedSupabaseFetch(input, init) {
 
   const startedAt = Date.now();
   const url = normalizeUrl(input);
+  // Include Auth latency, but never log tokens or query parameters.
+  const endpoint = new URL(url).pathname;
   const method = String(init?.method || (typeof Request !== 'undefined' && input instanceof Request ? input.method : 'GET')).toUpperCase();
 
   try {
@@ -42,7 +44,7 @@ async function loggedSupabaseFetch(input, init) {
     if (shouldLogSupabaseUrl(url)) {
       void logDbQueryEvent('supabase.query', {
         method,
-        url,
+        endpoint,
         statusCode: response.status,
         ok: response.ok,
         durationMs: Date.now() - startedAt,
@@ -51,7 +53,7 @@ async function loggedSupabaseFetch(input, init) {
       if (!response.ok) {
         void logErrorEvent('supabase.query_failed', new Error(`Supabase query returned ${response.status}`), {
           method,
-          url,
+          endpoint,
           statusCode: response.status,
           durationMs: Date.now() - startedAt,
         });
@@ -63,7 +65,7 @@ async function loggedSupabaseFetch(input, init) {
     if (shouldLogSupabaseUrl(url)) {
       void logErrorEvent('supabase.query_exception', error, {
         method,
-        url,
+        endpoint,
         durationMs: Date.now() - startedAt,
       });
     }

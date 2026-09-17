@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getAdminOverview, listAdminUsers } from '../../shared/admin-service.js';
+import { getAdminOverview, listAdminUsers, listAdminReferrals } from '../../shared/admin-service.js';
 
 const REPORTING_PAGE_SIZE = 1000;
 const REPORTING_SOURCE_ROW_LIMIT = 50000;
@@ -138,12 +138,7 @@ test('pagination stops once a short page proves the source is exhausted', async 
 
   await getAdminOverview(stub.client, { days: 30 });
 
-  // A single short page is enough: the batch may probe ahead, but it must not
-  // keep walking ranges to the row ceiling.
-  assert.ok(
-    stub.callsFor('sessions').length <= 4,
-    `expected the scan to stop early, saw ${stub.callsFor('sessions').length} page requests`,
-  );
+  assert.equal(stub.callsFor('sessions').length, 1, 'a short first page needs no speculative requests');
 });
 
 test('reports request only the columns they read instead of select(*)', async () => {
@@ -202,6 +197,30 @@ test('the auth listing runs alongside the table reads, not before them', async (
 
   authGate.resolve();
   await pending;
+});
+
+test('referral reads start while the user directory is still pending', async () => {
+  const authGate = deferred();
+  const stub = createSupabaseStub({ authGate: authGate.promise });
+  const pending = listAdminReferrals(stub.client);
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(stub.callsFor('referrals').length, 1);
+  assert.equal(stub.callsFor('referral_audit_logs').length, 1);
+  authGate.resolve();
+  const result = await pending;
+  assert.deepEqual(result.referrals, []);
+});
+
+test('overview includes pending purchase alerts without a separate transaction report', async () => {
+  const stub = createSupabaseStub({
+    authUsers: morphlyAuthUsers(1),
+    tables: { transactions: [
+      { user_id: 'user-0', type: 'purchase', status: 'pending', created_at: new Date().toISOString() },
+      { user_id: 'user-0', type: 'purchase', status: 'completed', created_at: new Date().toISOString() },
+      { user_id: 'user-0', type: 'usage', status: 'pending', created_at: new Date().toISOString() },
+    ] },
+  });
+  assert.equal((await getAdminOverview(stub.client)).pendingPayments, 1);
 });
 
 test('an oversized source is capped and reported through dataHealth', async () => {

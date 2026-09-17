@@ -61,10 +61,14 @@ export function createEngagementHandler(route, { db = supabaseAdmin } = {}) {
           return res.status(400).json({ error: 'Invalid communication action.' });
         }
         const offset = Math.max(0, Math.min(1000000, Number.parseInt(req.query?.offset || '0', 10) || 0));
-        const reviewQuery = await db.from('customer_reviews').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(offset, offset + 49);
+        const [reviewQuery, announcementQuery, jobQuery] = await Promise.all([
+          db.from('customer_reviews').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(offset, offset + 49),
+          db.from('customer_announcements').select('*').order('created_at', { ascending: false }).limit(50),
+          db.from('customer_email_jobs').select('id,kind,status,created_at,sent_at,last_error').order('created_at', { ascending: false }).limit(30),
+        ]);
         const reviews = check(reviewQuery);
-        const announcements = check(await db.from('customer_announcements').select('*').order('created_at', { ascending: false }).limit(50));
-        const jobs = check(await db.from('customer_email_jobs').select('id,kind,status,created_at,sent_at,last_error').order('created_at', { ascending: false }).limit(30));
+        const announcements = check(announcementQuery);
+        const jobs = check(jobQuery);
         return res.json({ reviews, reviewCount: reviewQuery.count, offset, announcements, jobs, email: { configured: Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL), adminEmail: REVIEW_ADMIN_EMAIL, reminderDays: Number(process.env.CUSTOMER_REMINDER_DAYS || 14) } });
       }
       const auth = await authenticateRequestUser(req, db);

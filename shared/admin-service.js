@@ -38,9 +38,7 @@ function normalizeAmount(value) {
 }
 
 const REPORTING_PAGE_SIZE = 1000;
-// Row pages requested concurrently. Admin reports read several large tables and
-// Vercel caps these functions at 30s (see vercel.json), so pages are fetched in
-// parallel batches instead of one blocking round-trip at a time.
+// Probe the first page once; only full sources need parallel follow-up pages.
 const REPORTING_PAGE_CONCURRENCY = 4;
 // Safety ceiling per source so a single runaway table cannot exhaust the
 // function budget. Reports flag this through `dataHealth.truncated`.
@@ -87,7 +85,8 @@ async function fetchAllRows(buildQuery, sourceName, maxRows = Number.POSITIVE_IN
 
   while (nextFrom < boundedMaxRows) {
     const ranges = [];
-    for (let slot = 0; slot < REPORTING_PAGE_CONCURRENCY && nextFrom < boundedMaxRows; slot += 1) {
+    const concurrency = nextFrom === 0 ? 1 : REPORTING_PAGE_CONCURRENCY;
+    for (let slot = 0; slot < concurrency && nextFrom < boundedMaxRows; slot += 1) {
       const to = Number.isFinite(boundedMaxRows)
         ? Math.min(nextFrom + REPORTING_PAGE_SIZE - 1, boundedMaxRows - 1)
         : nextFrom + REPORTING_PAGE_SIZE - 1;
@@ -442,6 +441,8 @@ export async function getAdminOverview(supabaseAdmin, options = {}) {
     repeatBuyers: [...purchaseCounts.values()].filter((count) => count > 1).length,
     sessions: filteredSessions.length,
     failedSessions,
+    pendingPayments: filteredTransactions.filter((transaction) =>
+      isPurchaseTransaction(transaction) && String(transaction.status || '').toLowerCase() === 'pending').length,
     crashes,
     apiRequests,
     apiErrors,
@@ -1200,10 +1201,8 @@ export async function listCreditPackages(supabaseAdmin, options = {}) {
 
 export async function listAdminReferrals(supabaseAdmin, options = {}) {
   const requestedStatus = String(options.status || 'all').trim().toLowerCase();
-  const authUsers = await listAllAuthUsers(supabaseAdmin);
-  const emailById = new Map(authUsers.map((user) => [user.id, user.email || user.id]));
-
-  const [referrals, profiles, bonusTransactions, rewardTransactions, auditLogs] = await Promise.all([
+  const [authUsers, referrals, profiles, bonusTransactions, rewardTransactions, auditLogs] = await Promise.all([
+    listAllAuthUsers(supabaseAdmin),
     fetchAllRows(
       () => supabaseAdmin.from('referrals').select('*').order('created_at', { ascending: false }),
       'referrals',
@@ -1232,6 +1231,7 @@ export async function listAdminReferrals(supabaseAdmin, options = {}) {
     ),
   ]);
 
+  const emailById = new Map(authUsers.map((user) => [user.id, user.email || user.id]));
   const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
   const rewardById = new Map(rewardTransactions.map((transaction) => [transaction.id, transaction]));
   const qualifyingPurchaseIds = referrals.map((entry) => entry.qualified_purchase_id).filter(Boolean);

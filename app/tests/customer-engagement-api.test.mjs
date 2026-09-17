@@ -48,3 +48,32 @@ test('invalid reviews and invalid announcement dates do not reach persistence', 
   }
   assert.equal(db.calls.length, 0);
 });
+
+test('admin communications reads run together after authorization and preserve pagination', async () => {
+  const db = database({ admin: true });
+  const originalFrom = db.from;
+  const pending = new Map();
+  const ranges = [];
+  db.from = (table) => {
+    if (table === 'admin_users') return originalFrom(table);
+    const query = {
+      select() { return this; }, order() { return this; },
+      range(from, to) { ranges.push([from, to]); return this; }, limit() { return this; },
+      then(resolve) { return new Promise(done => pending.set(table, done)).then(resolve); },
+    };
+    return query;
+  };
+  const res = response();
+  const request = createEngagementHandler('admin-engagement', { db })({ method: 'GET', headers: { authorization: 'Bearer valid-test-token' }, query: { offset: '50' } }, res);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(pending.size, 3, 'all three reads must start before any finishes');
+  assert.deepEqual(ranges, [[50, 99]]);
+  pending.get('customer_reviews')({ data: [{ id: reviewId }], count: 51 });
+  pending.get('customer_announcements')({ data: [] });
+  pending.get('customer_email_jobs')({ data: [] });
+  await request;
+  assert.equal(res.code, 200);
+  assert.equal(res.body.reviewCount, 51);
+  assert.equal(res.body.offset, 50);
+  assert.equal(res.body.reviews[0].id, reviewId);
+});

@@ -1,5 +1,6 @@
 const fs = require('fs/promises');
 const path = require('path');
+const { verifyPackage } = require('./verify-package.cjs');
 
 const UNITY_CAPTURE_FILTERS = [
   'UnityCaptureFilter32.dll',
@@ -140,6 +141,8 @@ module.exports = async function afterPack(context) {
     )
   ]);
 
+  // Catch accidental repository/runtime dependencies before NSIS embeds them.
+  await verifyPackage(context.appOutDir);
   console.log(
     `[afterPack] Bundled UnityCapture into ${destinationDirectory} and ` +
     `the Media Foundation camera into ${mediaFoundationDestinationDirectory}`

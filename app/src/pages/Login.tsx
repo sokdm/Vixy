@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Video, Loader2, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/context/AuthContext';
-import { supabase } from '@/lib/supabase';
-import { CONFIRM_EMAIL_MESSAGE, getPasswordResetUrl, normalizeEmail, RESET_REQUEST_MESSAGE } from '@/lib/auth-flow';
+import { CONFIRM_EMAIL_MESSAGE } from '@/lib/auth-flow';
 import { validateReferralCode } from '@/lib/account';
 import {
   getReferralCodeFormatError,
@@ -15,13 +14,13 @@ import {
 
 function Login() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { login, register, loading, error, clearError } = useAuth();
   const [isLogin, setIsLogin] = useState(() => location.pathname !== '/signup');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [resetLoading, setResetLoading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
   const feedbackRef = useRef<HTMLParagraphElement>(null);
@@ -35,7 +34,7 @@ function Login() {
     const signupMode = location.pathname === '/signup';
     setIsLogin(!signupMode);
     if (!signupMode && new URLSearchParams(location.search).get('reset') === '1') {
-      setNotice('Enter your email address, then select Forgot password to request a new reset link.');
+      setNotice('Select Forgot password to reset your password using an email code.');
     }
 
     if (signupMode) {
@@ -44,28 +43,9 @@ function Login() {
     }
   }, [location.pathname, location.search]);
 
-  const handleForgotPassword = async () => {
-    if (requestInFlight.current || loading) return;
-    clearError(); setRequestError(null); setNotice(null);
-    const normalizedEmail = normalizeEmail(email);
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      setRequestError('Enter a valid email address, then select Forgot password.');
-      return;
-    }
-    requestInFlight.current = true;
-    setResetLoading(true);
-    try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
-        redirectTo: getPasswordResetUrl(import.meta.env.VITE_AUTH_SITE_URL),
-      });
-      if (resetError) throw resetError;
-      setNotice(RESET_REQUEST_MESSAGE);
-    } catch (resetError) {
-      setRequestError(resetError instanceof Error ? resetError.message : 'Unable to send the reset request. Please try again.');
-    } finally {
-      setResetLoading(false);
-      requestInFlight.current = false;
-    }
+  const handleForgotPassword = () => {
+    clearError();
+    navigate('/reset-password', { state: { email } });
   };
 
   useEffect(() => {
@@ -233,7 +213,7 @@ function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="h-11 bg-background border-border text-foreground placeholder:text-muted-foreground"
-                  disabled={loading || resetLoading}
+                  disabled={loading}
                   aria-describedby={error || requestError || notice ? 'auth-feedback' : undefined}
                   required
                 />
@@ -246,9 +226,9 @@ function Login() {
                       type="button" 
                       className="text-sm text-primary hover:text-primary"
                       onClick={handleForgotPassword}
-                      disabled={loading || resetLoading}
+                      disabled={loading}
                     >
-                      {resetLoading ? 'Sending…' : 'Forgot password?'}
+                      Forgot password?
                     </button>
                   )}
                 </div>
@@ -278,7 +258,7 @@ function Login() {
               </div>
               <Button
                 type="submit"
-                disabled={loading || validatingReferral || resetLoading}
+                disabled={loading || validatingReferral}
                 className="w-full h-11 bg-primary hover:bg-primary-hover text-primary-foreground font-medium disabled:opacity-50"
               >
                 {loading ? (
@@ -299,7 +279,7 @@ function Login() {
                   type="button"
                   onClick={toggleMode}
                   className="text-primary hover:text-primary font-medium"
-                  disabled={loading || resetLoading || validatingReferral}
+                  disabled={loading || validatingReferral}
                 >
                   {isLogin ? 'Create account' : 'Sign in'}
                 </button>

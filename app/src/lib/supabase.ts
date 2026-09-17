@@ -18,3 +18,16 @@ const supabaseUrl = isValidHttpUrl(rawUrl) ? rawUrl : 'https://iwausfzgitoehqecr
 const supabaseAnonKey = (rawKey && rawKey.length > 10) ? rawKey : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.mock_key_for_preview';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Recovery must never sign the main app in or replace a saved account.
+export function createPasswordRecoveryClient() {
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      storageKey: `morphly-recovery-${crypto.randomUUID()}`,
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      flowType: 'implicit',
+    },
+  });
+}

@@ -12,6 +12,7 @@ export interface ViduClientOptions {
   apiKey?: string;
   baseUrl?: string;
   liveId?: string;
+  traceId?: string;
   renderUid?: string;
   rtc?: Record<string, unknown> | null;
   maxSeconds?: number;
@@ -75,7 +76,9 @@ export class ViduRealtimeClient {
     const support = await AliRtcEngine.isSupported();
     if (options.signal?.aborted) throw new Error('Pro session was cancelled.');
     if (!support.support) throw new Error('This browser cannot run Pro video. Use an updated Chrome or Edge.');
-    AliRtcEngine.setLogLevel(0);
+    // DEBUG (0) prints join credentials and signed stream URLs to the console.
+    // Keep our scoped diagnostics below instead of the SDK's raw transport logs.
+    AliRtcEngine.setLogLevel(AliRtcEngine.AliRtcLogLevel.NONE);
     let engine: RtcEngine | null = AliRtcEngine.getInstance();
     const cameraTrack = inputTrack.clone();
     const connId = crypto.randomUUID();
@@ -85,6 +88,8 @@ export class ViduRealtimeClient {
     let stopped = false;
     let ready = false;
     let cleanupPromise: Promise<void> | null = null;
+    let published = false;
+    let receivedVideo = false;
     let initRetry: ReturnType<typeof setTimeout> | undefined;
     let sessionTimer: ReturnType<typeof setTimeout> | undefined;
     let startupTimer: ReturnType<typeof setTimeout> | undefined;
@@ -130,9 +135,13 @@ export class ViduRealtimeClient {
       cleanupPromise = Promise.resolve().then(() => currentEngine?.destroy()).catch(() => {});
       return cleanupPromise;
     };
-    const fail = (message: string) => {
+    const fail = (message: string, reason?: string) => {
       if (stopped) return;
       const error = new Error(message);
+      console.warn('[Vidu] session diagnostics', JSON.stringify({
+        liveId, traceId: options.traceId, reason, initialized: ready,
+        published, receivedVideo,
+      }));
       rejectStartup(error);
       void cleanup();
       options.onError?.(error);
@@ -152,6 +161,7 @@ export class ViduRealtimeClient {
         if (String(userId) !== renderUid || next !== 3 || stopped) return;
         void engine?.getVideoTrack({ userId, streamType: 0 }).then(track => {
           if (!track || stopped) return;
+          receivedVideo = true;
           options.onRemoteStream?.(new MediaStream([track]));
           resolveVideo();
           if (ready) changeState('generating');
@@ -198,7 +208,12 @@ export class ViduRealtimeClient {
             }, 2000);
           } else fail(`Pro initialization failed (${ack?.error_code || 'unknown'}).`);
         } else if (message.type === 6) {
-          fail('Vidu ended this session. Start again to continue.');
+          const rawReason = message.payload?.hangup?.hangup_reason;
+          const reason = typeof rawReason === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(rawReason)
+            ? rawReason : 'unknown';
+          fail(reason === 'sip_close'
+            ? 'Pro’s rendering connection closed before the session finished (sip_close). Please try again.'
+            : `Vidu ended this session (${reason}). Please try again.`, reason);
         } else if (message.type === 14 && message.payload?.switch_prompt_ack?.success === false) {
           fail(`Pro could not change the image (${message.payload.switch_prompt_ack.error_code || 'unknown'}).`);
         }
@@ -208,6 +223,7 @@ export class ViduRealtimeClient {
       await Promise.race([engine.joinChannel(rtc.token, rtc.user_id), failurePromise]);
       assertActive();
       await Promise.race([engine.publishLocalVideoStream(true), failurePromise]);
+      published = true;
       await Promise.race([videoPromise, failurePromise]);
       assertActive();
       clearTimeout(startupTimer);

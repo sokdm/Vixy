@@ -13,6 +13,7 @@ declare module 'aliyun-rtc-sdk' {
     destroy(): Promise<void>;
   }
   const AliRtcEngine: {
+    AliRtcLogLevel: { NONE: 5 };
     isSupported(): Promise<{ support: boolean; reason?: string }>;
     setLogLevel(level: number): void;
     getInstance(): RtcEngine;

@@ -1,6 +1,6 @@
 # Vidu quality-test branch
 
-Version 2.5.10 includes Pro using Vidu S2-Editing and Plus using Xmax. Users must choose an engine for each new stream; neither is preselected. Live output quality has not yet been verified with a camera session.
+Version 2.5.11 includes Pro using Vidu S2-Editing and Plus using Xmax. Users must choose an engine for each new stream; neither is preselected. The user confirmed Pro produced working video on September 16; output quality has not been independently evaluated.
 
 ## Implemented
 
@@ -20,6 +20,12 @@ Sign in, choose Pro in the engine dialog, upload a PNG/JPEG/WebP reference under
 The server environment needs a Vidu API key with S2-Editing access and working Supabase credentials. The downloaded source's local `.env` files contained placeholder Supabase browser credentials. Keep all real credentials outside Git. Mock credentials cannot evaluate Vidu quality and are rejected by the RTC client.
 
 Automated checks exercise session credentials and payloads, renderer selection, prompt signaling, initialization retry, timeouts, cancellation and hangup. They mock the provider and RTC engine; they do not establish real Vidu media connectivity.
+
+## Provider disconnect diagnostics (web follow-up)
+
+A reported session joined RTC and published its camera, then Vidu sent a forced hangup. A read-only provider status query confirmed `close_reason=sip_close` and six billed seconds. The provider record does not explain the underlying rendering closure; the user subsequently confirmed Pro worked. No connection-order changes or automatic paid retries were introduced based on that single failure.
+
+The web follow-up preserves safe hangup reason codes and logs session/trace IDs with initialization, publication and received-video flags. Raw SDK debug logging is disabled because it includes RTC credentials and signed URLs. This diagnostic change follows the v2.5.11 installer tag.
 
 ## Separate deployment fixes and limitations
 

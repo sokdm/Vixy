@@ -12,6 +12,7 @@ function harness() {
   const events = new Map();
   const timers = new Map();
   const sent = [];
+  const diagnostics = [];
   let socket;
   let destroyed = 0;
   const original = { readyState: 'live', stopped: false, stop() { this.stopped = true; }, clone: () => clone };
@@ -43,22 +44,24 @@ function harness() {
   const exports = {};
   const context = vm.createContext({
     exports, URL, URLSearchParams, crypto: { randomUUID: () => 'connection-id' }, WebSocket: Socket,
+    console: { warn: (_label, message) => diagnostics.push(JSON.parse(message)) },
     window: { addEventListener() {}, removeEventListener() {} },
     MediaStream: class { constructor(tracks) { this.tracks = tracks; } getVideoTracks() { return this.tracks; } },
     setTimeout: (fn, ms) => { const id = {}; timers.set(id, { fn, ms }); return id; },
     clearTimeout: id => timers.delete(id),
     require: name => name === './realtime-provider' ? { VIDU_REALTIME_MODEL: 's2-editing' } : {
-      default: { isSupported: async () => ({ support: true }), setLogLevel() {}, getInstance: () => engine },
+      default: { isSupported: async () => ({ support: true }), AliRtcLogLevel: { NONE: 5 },
+        setLogLevel(level) { assert.equal(level, 5, 'raw SDK credential logs must be disabled'); }, getInstance: () => engine },
     },
   });
   vm.runInContext(compiled, context);
   const outputs = [];
   const errors = [];
   const client = exports.createViduClient({ apiKey: 'short-lived-secret' });
-  const options = { liveId: 'live-id', renderUid: 'renderer', rtc: { token: 'rtc-token', user_id: 'camera-user' }, maxSeconds: 60,
+  const options = { liveId: 'live-id', traceId: 'trace-id', renderUid: 'renderer', rtc: { token: 'rtc-token', user_id: 'camera-user' }, maxSeconds: 60,
     onRemoteStream: stream => outputs.push(stream), onError: error => errors.push(error) };
   return { exports, client, options, input: { getVideoTracks: () => [original] }, original, clone, generated, outputs, errors,
-    events, timers, sent, engine, get socket() { return socket; }, get destroyed() { return destroyed; }, get audio() { return audio; } };
+    events, timers, sent, engine, diagnostics, get socket() { return socket; }, get destroyed() { return destroyed; }, get audio() { return audio; } };
 }
 
 test('Vidu uses scoped signaling credentials and displays only the renderer, then hangs up once', async () => {
@@ -132,6 +135,23 @@ test('Vidu rejects master keys, mock credentials and unrelated signaling hosts',
   }
   assert.throws(() => h.exports.buildViduSocketUrl('https://example.com', 'live', 'conn', 'secret'), /Unsupported/);
   assert.equal(h.socket, undefined);
+});
+
+test('Vidu preserves safe provider close reasons and trace IDs without logging credentials', async () => {
+  for (const reason of ['sip_close', 'duration_limit', 'https://secret.test/?token=secret', undefined]) {
+    const h = harness();
+    const connected = h.client.connect(h.input, h.options);
+    const rejection = assert.rejects(connected, reason === 'sip_close' ? /sip_close/ : reason === 'duration_limit' ? /duration_limit/ : /unknown/);
+    await tick();
+    h.socket.open();
+    h.socket.message({ type: 6, payload: { hangup: { hangup_reason: reason } } });
+    await rejection;
+    assert.equal(h.destroyed, 1);
+    assert.equal(h.diagnostics[0].traceId, 'trace-id');
+    assert.equal(h.diagnostics[0].receivedVideo, false);
+    const logged = JSON.stringify(h.diagnostics);
+    for (const secret of ['short-lived-secret', 'rtc-token', 'secret.test']) assert.equal(logged.includes(secret), false);
+  }
 });
 
 test('cancelling Vidu startup tears down signaling and RTC before a renderer arrives', async () => {

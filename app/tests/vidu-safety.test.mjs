@@ -35,12 +35,13 @@ test('Vidu creation sends the selected image and bare server authorization, retu
     assert.equal(new URL(url).pathname, '/live/s_editing/realtime');
     assert.equal(options.headers.Authorization, apiKey);
     assert.deepEqual(JSON.parse(options.body), { image_url: 'https://example.com/my-image.png', editing_type: 'subject_replacement' });
-    return Response.json({ client_secret: 'session-secret', live: { id: 'live-1', live_duration: 90 }, render_uid: 'render-1', rtc: { user_id: 'user-1', token: 'rtc-auth' } });
+    return Response.json({ client_secret: 'session-secret', live: { id: 'live-1', live_duration: 90, trace_id: 'trace-1' }, render_uid: 'render-1', rtc: { user_id: 'user-1', token: 'rtc-auth' } });
   });
   const result = await createViduTemporaryKey({ apiKey, maxSeconds: 1800, imageUrl: 'https://example.com/my-image.png' });
   assert.equal(result.token, 'session-secret');
   assert.equal(result.sessionLimit, 90);
   assert.equal(result.rtc.token, 'rtc-auth');
+  assert.equal(result.traceId, 'trace-1');
   assert.equal(JSON.stringify(result).includes(apiKey), false);
 });
 

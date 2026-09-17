@@ -254,6 +254,7 @@ export async function createViduTemporaryKey({
       return {
         token: clientSecret,
         liveId,
+        traceId: typeof data?.live?.trace_id === 'string' ? data.live.trace_id : undefined,
         renderUid,
         rtc,
         expiresAt,
@@ -797,6 +798,7 @@ export default async function handler(req, res) {
       baseUrl: providerSession.baseUrl,
       token: providerSession.token,
       liveId: providerSession.liveId,
+      traceId: providerSession.traceId,
       renderUid: providerSession.renderUid,
       rtc: providerSession.rtc,
       expiresAt: providerSession.expiresAt,

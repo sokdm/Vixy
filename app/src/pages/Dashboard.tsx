@@ -97,6 +97,7 @@ type AiSessionResponse = {
   token?: string;
   baseUrl?: string;
   liveId?: string;
+  traceId?: string;
   renderUid?: string;
   rtc?: Record<string, unknown> | null;
   error?: string;
@@ -1886,6 +1887,7 @@ function Dashboard() {
       baseUrl?: string;
       maxSeconds?: number;
       liveId?: string;
+      traceId?: string;
       renderUid?: string;
       rtc?: Record<string, unknown> | null;
     },
@@ -1976,6 +1978,7 @@ function Dashboard() {
         baseUrl: options?.baseUrl,
         maxSeconds: options?.maxSeconds,
         liveId: options?.liveId,
+        traceId: options?.traceId,
         renderUid: options?.renderUid,
         rtc: options?.rtc,
         modelName: model,
@@ -2135,6 +2138,7 @@ function Dashboard() {
       baseUrl?: string;
       maxSeconds?: number;
       liveId?: string;
+      traceId?: string;
       renderUid?: string;
       rtc?: Record<string, unknown> | null;
     },
@@ -2146,6 +2150,7 @@ function Dashboard() {
         baseUrl: options?.baseUrl,
         maxSeconds: options?.maxSeconds,
         liveId: options?.liveId,
+        traceId: options?.traceId,
         renderUid: options?.renderUid,
         rtc: options?.rtc,
       });
@@ -2902,6 +2907,7 @@ function Dashboard() {
               baseUrl: startResponse.baseUrl,
               maxSeconds: startResponse.maxSeconds,
               liveId: startResponse.liveId,
+              traceId: startResponse.traceId,
               renderUid: startResponse.renderUid,
               rtc: startResponse.rtc,
             }),

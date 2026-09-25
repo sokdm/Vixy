@@ -24,7 +24,7 @@ test('cancelled, unsupported and unverified repairs never claim success', async 
 });
 
 test('camera elevation uses only fixed absolute paths, quotes safely and hides helper windows', () => {
-  const config = { windowsDirectory: 'C:\\Windows', filters: [{ bits: 32, path: "C:\\Program Files\\Morphly's App\\UnityCaptureFilter32.dll" }, { bits: 64, path: 'C:\\Program Files\\Morphly\\UnityCaptureFilter64.dll' }], registrar: 'C:\\Program Files\\Morphly\\morphly_cam_registrar.exe', mediaFoundationSupported: true };
+  const config = { windowsDirectory: 'C:\\Windows', filters: [{ bits: 32, path: "C:\\Program Files\\Morphly's App\\UnityCaptureFilter32.dll" }, { bits: 64, path: 'C:\\Program Files\\Vixy\\UnityCaptureFilter64.dll' }], registrar: 'C:\\Program Files\\Vixy\\vixy_cam_registrar.exe', mediaFoundationSupported: true };
   const command = buildCameraRepairCommand(config);
   const outer = Buffer.from(command.args.at(-1), 'base64').toString('utf16le');
   assert.match(outer, /-Verb RunAs -PassThru -Wait -WindowStyle Hidden/);
@@ -46,7 +46,7 @@ test('upgrade preserves registration and runtime probes do not capture frames', 
   const installer = await readFile(new URL('../build/installer.nsh', import.meta.url), 'utf8');
   assert.match(installer, /\$\{isUpdated\}[\s\S]*Goto customUnInstallDone/);
   assert.match(installer, /IntCmp \$R2 22000/);
-  assert.match(installer, /morphly_cam_registrar\.exe" probe-registration/);
+  assert.match(installer, /vixy_cam_registrar\.exe" probe-registration/);
   const registrar = await readFile(new URL('../../native-camera/src/tools/registrar/main.cpp', import.meta.url), 'utf8');
   assert.match(registrar, /ProbeRegisteredWindowsVirtualCamera\(false\)/);
   assert.match(registrar, /SameBinary\(sourcePath, sideBySidePath\)/);

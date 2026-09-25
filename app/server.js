@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-import { supabaseAdminConfigError } from './server/supabase-admin.js';
+import { mongoConfigError } from './server/mongo.js';
 import { logRequestEvent } from '../shared/backend-logger.js';
 import { handleApiRoute } from './server/api-router.js';
 import { createMeanVcRuntimeController } from './server/meanvc-runtime.js';
@@ -45,7 +45,7 @@ function requireLocalMeanVcRequest(req, res, next) {
   }
 
   if (!isLoopback || !isTrustedOrigin) {
-    res.status(403).json({ error: 'MorphlyVC controls are available only from this computer.' });
+    res.status(403).json({ error: 'VixyVC controls are available only from this computer.' });
     return;
   }
 
@@ -82,7 +82,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Local MorphlyVC controls are deliberately limited to loopback requests because
+// Local VixyVC controls are deliberately limited to loopback requests because
 // they inspect local files and can start a Python audio process.
 app.use('/api/local/meanvc', requireLocalMeanVcRequest);
 app.get('/api/local/meanvc/status', (_req, res) => {
@@ -105,21 +105,21 @@ app.post('/api/local/meanvc/prepare', (req, res) => {
   try {
     res.json(meanVcRuntime.prepare(req.body ?? {}));
   } catch (error) {
-    res.status(400).json({ error: error instanceof Error ? error.message : 'Unable to prepare the MorphlyVC voice.' });
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Unable to prepare the VixyVC voice.' });
   }
 });
 app.post('/api/local/meanvc/start', (req, res) => {
   try {
     res.json(meanVcRuntime.start(req.body ?? {}));
   } catch (error) {
-    res.status(400).json({ error: error instanceof Error ? error.message : 'Unable to start MorphlyVC.' });
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Unable to start VixyVC.' });
   }
 });
 app.post('/api/local/meanvc/pitch', (req, res) => {
   try {
     res.json(meanVcRuntime.setPitch(req.body ?? {}));
   } catch (error) {
-    res.status(400).json({ error: error instanceof Error ? error.message : 'Unable to update MorphlyVC pitch.' });
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Unable to update VixyVC pitch.' });
   }
 });
 app.post('/api/local/meanvc/stop', (_req, res) => {
@@ -139,8 +139,8 @@ if (process.env.NODE_ENV === 'production') {
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
-  if (supabaseAdminConfigError) {
-    console.warn(`[config] ${supabaseAdminConfigError}`);
+  if (mongoConfigError) {
+    console.warn(`[config] ${mongoConfigError}`);
   }
   if (xmaxConfigError) {
     console.warn(`[config] ${xmaxConfigError}`);

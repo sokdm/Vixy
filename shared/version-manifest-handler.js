@@ -1,5 +1,5 @@
-const GITHUB_OWNER = 'samuellucky2424-afk';
-const GITHUB_REPO = 'morphly';
+﻿const GITHUB_OWNER = 'sokdm';
+const GITHUB_REPO = 'Vixy';
 const GITHUB_REPOSITORY_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`;
 const GITHUB_RELEASES_URL = `${GITHUB_REPOSITORY_URL}/releases`;
 const GITHUB_API_LATEST = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`;
@@ -20,8 +20,8 @@ function normalizePackageType(value) {
 function buildAssetName(version, packageType) {
   const safeVersion = version.trim();
   return packageType === 'portable'
-    ? `Morphly-${safeVersion}.exe`
-    : `Morphly-Setup-${safeVersion}.exe`;
+    ? `Vixy-${safeVersion}.exe`
+    : `Vixy-Setup-${safeVersion}.exe`;
 }
 
 function buildReleasePageUrl(version) {
@@ -61,7 +61,7 @@ function getBuildType(req) {
 
 function getGitHubToken(env = process.env) {
   const candidates = [
-    env.MORPHLY_GITHUB_TOKEN,
+    env.VIXY_GITHUB_TOKEN,
     env.GITHUB_TOKEN,
     env.GH_TOKEN,
   ];
@@ -79,8 +79,8 @@ function getGitHubToken(env = process.env) {
 function getFallbackVersion(req, env = process.env) {
   const candidates = [
     req?.query?.currentVersion,
-    env.MORPHLY_UPDATE_FALLBACK_VERSION,
-    env.MORPHLY_FALLBACK_UPDATE_VERSION,
+    env.VIXY_UPDATE_FALLBACK_VERSION,
+    env.VIXY_FALLBACK_UPDATE_VERSION,
     env.APP_VERSION,
   ];
 
@@ -98,7 +98,7 @@ async function fetchLatestRelease(options = {}) {
   const token = getGitHubToken(options.env);
   const headers = {
     'Accept': 'application/vnd.github+json',
-    'User-Agent': 'morphly-updater',
+    'User-Agent': 'vixy-updater',
     'X-GitHub-Api-Version': '2022-11-28',
   };
 

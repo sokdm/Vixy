@@ -1,43 +1,34 @@
-const PLACEHOLDER_PATTERN = /^(?:your[_-]|replace[_-]?me|change[_-]?me|placeholder|\$\{|\$[a-z_])/i;
-
 type PublicBuildEnvironment = Record<string, string | undefined>;
 
-function normalize(value: unknown): string {
-  return typeof value === 'string' ? value.trim() : '';
-}
-
-function isPlaceholder(value: string): boolean {
-  return !value || PLACEHOLDER_PATTERN.test(value);
+function isValidPublicUrl(value: string, requireHttps: boolean): boolean {
+  if (!value) return true;
+  try {
+    const parsed = new URL(value);
+    return requireHttps ? parsed.protocol === 'https:' : ['https:', 'http:'].includes(parsed.protocol);
+  } catch {
+    return false;
+  }
 }
 
 export function validatePublicBuildEnvironment(
   environment: PublicBuildEnvironment,
   { requireHttps = true }: { requireHttps?: boolean } = {},
 ): void {
-  if (!requireHttps && (environment.VITE_LOCAL_PREVIEW === 'true' || environment.LOCAL_PREVIEW === 'true')) {
-    return;
-  }
-  const supabaseUrl = normalize(environment.VITE_SUPABASE_URL);
-  const supabaseAnonKey = normalize(environment.VITE_SUPABASE_ANON_KEY);
+  if (!requireHttps && (environment.VITE_LOCAL_PREVIEW === 'true' || environment.LOCAL_PREVIEW === 'true')) return;
+
   const errors: string[] = [];
-
-  try {
-    const parsedUrl = new URL(supabaseUrl);
-    const validProtocol = requireHttps
-      ? parsedUrl.protocol === 'https:'
-      : parsedUrl.protocol === 'https:' || parsedUrl.protocol === 'http:';
-    if (!validProtocol || isPlaceholder(supabaseUrl)) {
-      errors.push('VITE_SUPABASE_URL must be a valid public Supabase URL.');
+  for (const [name, value] of Object.entries({
+    VITE_PUBLIC_APP_URL: environment.VITE_PUBLIC_APP_URL,
+    VITE_WINDOWS_DOWNLOAD_URL: environment.VITE_WINDOWS_DOWNLOAD_URL,
+    VITE_UPDATE_MANIFEST_URL: environment.VITE_UPDATE_MANIFEST_URL,
+  })) {
+    const trimmed = typeof value === 'string' ? value.trim() : '';
+    if (trimmed && !isValidPublicUrl(trimmed, requireHttps)) {
+      errors.push(`${name} must be a valid ${requireHttps ? 'HTTPS ' : ''}URL.`);
     }
-  } catch {
-    errors.push('VITE_SUPABASE_URL must be a valid public Supabase URL.');
-  }
-
-  if (isPlaceholder(supabaseAnonKey) || supabaseAnonKey.length < 20) {
-    errors.push('VITE_SUPABASE_ANON_KEY must contain the public anon/publishable key.');
   }
 
   if (errors.length > 0) {
-    throw new Error(`Morphly public client configuration is invalid:\n- ${errors.join('\n- ')}`);
+    throw new Error(`Vixy public client configuration is invalid:\n- ${errors.join('\n- ')}`);
   }
 }

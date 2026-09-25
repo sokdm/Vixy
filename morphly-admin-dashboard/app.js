@@ -1,7 +1,7 @@
-"use strict";
+﻿"use strict";
 
 const CONFIG = {
-  apiBase: window.MORPHLY_API_BASE || window.location.origin,
+  apiBase: window.VIXY_API_BASE || window.location.origin,
   endpoints: {
     overview: "/api/admin-overview", users: "/api/admin-users", adjustCredit: () => "/api/admin-users",
     updateStatus: () => "/api/admin-users", packages: "/api/admin-credit-packages",
@@ -44,7 +44,7 @@ const state = {
 const $ = (selector, scope = document) => scope.querySelector(selector);
 const $$ = (selector, scope = document) => Array.from(scope.querySelectorAll(selector));
 const number = (value) => Math.round(value).toLocaleString("en-NG");
-const money = (value) => `₦${Math.round(value).toLocaleString("en-NG")}`;
+const money = (value) => `â‚¦${Math.round(value).toLocaleString("en-NG")}`;
 const percentage = (part, whole) => whole ? `${((part / whole) * 100).toFixed(1)}%` : "0%";
 const initials = (name) => name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
 const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", "\"": "&quot;" })[character]);
@@ -159,12 +159,7 @@ function scopedEndpoint(path) {
 }
 const AdminAPI = {
   async request(path, options = {}) {
-    let accessToken = window.morphlyAccessToken;
-    if (!accessToken) {
-      const session = (await window.morphlySupabase.auth.getSession()).data.session;
-      accessToken = session?.access_token;
-      window.morphlyAccessToken = accessToken || null;
-    }
+    let accessToken = window.vixyAccessToken || localStorage.getItem("vixy:admin-token");
     if (!accessToken) throw new Error("Your admin session has expired.");
     const response = await fetch(`${CONFIG.apiBase}${path}`, { ...options, signal: options.signal || AbortSignal.timeout(35000), cache: "no-store", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}`, ...(options.headers || {}) } });
     const data = await response.json().catch(() => ({}));
@@ -252,7 +247,7 @@ function filteredUsers() {
   return state.users.filter((user) => state.platform === "all" || user.platform === state.platform).filter((user) => state.source === "all" || user.source === state.source);
 }
 
-function metricCard(label, value, context, trend = "", icon = "↗") {
+function metricCard(label, value, context, trend = "", icon = "â†—") {
   const trendMarkup = trend ? `<strong class="${trend.startsWith("-") ? "negative" : "positive"}">${escapeHtml(trend)}</strong> ` : "";
   return `<article class="metric-card"><div class="metric-card-head"><span class="metric-label">${escapeHtml(label)}</span><span class="metric-icon">${escapeHtml(icon)}</span></div><div><strong class="metric-value">${escapeHtml(value)}</strong><span class="metric-context">${trendMarkup}${escapeHtml(context)}</span></div></article>`;
 }
@@ -260,10 +255,10 @@ function metricCard(label, value, context, trend = "", icon = "↗") {
 function renderOverview() {
   const data = filteredMetrics();
   $("#overviewMetrics").innerHTML = [
-    metricCard("Downloads", number(data.downloads), `${number(data.signups)} created accounts`, "", "↓"),
-    metricCard("Activated users", number(data.activated), `${percentage(data.activated, data.signups)} of signups`, "", "✓"),
-    metricCard("Revenue", money(data.revenue), `${number(data.buyers)} paying customers`, "", "₦"),
-    metricCard("Recorded net", money(data.grossProfit), "Revenue minus recorded fees and refunds", "", "↗")
+    metricCard("Downloads", number(data.downloads), `${number(data.signups)} created accounts`, "", "â†“"),
+    metricCard("Activated users", number(data.activated), `${percentage(data.activated, data.signups)} of signups`, "", "âœ“"),
+    metricCard("Revenue", money(data.revenue), `${number(data.buyers)} paying customers`, "", "â‚¦"),
+    metricCard("Recorded net", money(data.grossProfit), "Revenue minus recorded fees and refunds", "", "â†—")
   ].join("");
   renderGrowthChart(data);
   renderFunnel(data);
@@ -325,12 +320,12 @@ function renderFunnel(data) {
     ["First purchase", data.buyers],
     ["Repeat purchase", data.repeatBuyers]
   ];
-  $("#funnelChart").innerHTML = stages.map(([label, value]) => `<div class="funnel-row"><span>${escapeHtml(label)}</span><strong>${number(value)} · ${percentage(value, data.downloads)}</strong><div class="funnel-track"><div class="funnel-fill" style="width:${Math.min(100, (value / Math.max(1, data.downloads)) * 100)}%"></div></div></div>`).join("");
+  $("#funnelChart").innerHTML = stages.map(([label, value]) => `<div class="funnel-row"><span>${escapeHtml(label)}</span><strong>${number(value)} Â· ${percentage(value, data.downloads)}</strong><div class="funnel-track"><div class="funnel-fill" style="width:${Math.min(100, (value / Math.max(1, data.downloads)) * 100)}%"></div></div></div>`).join("");
 }
 
 function renderMoney(data) {
   const items = [["Customer revenue", data.revenue], ["Recorded payment fees", -data.fees], ["Recorded refunds", -data.refunds], ["Recorded net", data.grossProfit]];
-  $("#moneyBreakdown").innerHTML = items.map(([label, value]) => `<div class="money-row"><span>${escapeHtml(label)}</span><strong>${value < 0 ? "−" : ""}${money(Math.abs(value))}</strong></div>`).join("");
+  $("#moneyBreakdown").innerHTML = items.map(([label, value]) => `<div class="money-row"><span>${escapeHtml(label)}</span><strong>${value < 0 ? "âˆ’" : ""}${money(Math.abs(value))}</strong></div>`).join("");
 }
 
 function renderAlerts(data) {
@@ -344,10 +339,10 @@ function renderAlerts(data) {
     alerts.push({ level: "critical", icon: "!", title: "Critical application errors", detail: "Recorded occurrences in the selected period", count: number(criticalErrors) });
   }
   if (data.signups > data.activated) {
-    alerts.push({ level: "warning", icon: "↻", title: "Users awaiting first output", detail: number(data.signups - data.activated) + " signups have not reached a first output", count: percentage(data.activated, data.signups) });
+    alerts.push({ level: "warning", icon: "â†»", title: "Users awaiting first output", detail: number(data.signups - data.activated) + " signups have not reached a first output", count: percentage(data.activated, data.signups) });
   }
   if (pendingPayments > 0) {
-    alerts.push({ level: "warning", icon: "₦", title: "Pending payment records", detail: "Backend transactions still awaiting completion", count: number(pendingPayments) });
+    alerts.push({ level: "warning", icon: "â‚¦", title: "Pending payment records", detail: "Backend transactions still awaiting completion", count: number(pendingPayments) });
   }
   $("#alertList").innerHTML = alerts.length
     ? alerts.map((alert) => [
@@ -367,12 +362,12 @@ function renderUsers() {
   const balances = platformUsers.reduce((sum, user) => sum + user.credits, 0);
   const revenue = platformUsers.reduce((sum, user) => sum + user.spent, 0);
   $("#userMetrics").innerHTML = [
-    metricCard("Listed users", number(platformUsers.length), `${active} active accounts`, "", "◎"),
+    metricCard("Listed users", number(platformUsers.length), `${active} active accounts`, "", "â—Ž"),
     metricCard("Suspended", number(suspended), "Access currently blocked", "", "!"),
-    metricCard("Customer revenue", money(revenue), "Across filtered customers", "", "₦"),
-    metricCard("Available credits", number(balances), "Total customer balances", "", "◫")
+    metricCard("Customer revenue", money(revenue), "Across filtered customers", "", "â‚¦"),
+    metricCard("Available credits", number(balances), "Total customer balances", "", "â—«")
   ].join("");
-  $("#userTableBody").innerHTML = users.length ? users.map((user) => `<tr><td><div class="user-cell"><span class="small-avatar">${initials(user.name)}</span><span><strong>${escapeHtml(user.name)}</strong><small>${escapeHtml(user.email)} · ${escapeHtml(user.id)}</small></span></div></td><td><span class="status-pill ${user.status}">${escapeHtml(user.status)}</span></td><td><strong>${number(user.credits)}</strong></td><td>${number(user.purchases)}</td><td>${money(user.spent)}</td><td>${escapeHtml(user.lastActive)}</td><td><button class="manage-button" type="button" data-manage-user="${escapeHtml(user.id)}">Manage</button></td></tr>`).join("") : `<tr><td class="empty-cell" colspan="7">No users match the selected filters.</td></tr>`;
+  $("#userTableBody").innerHTML = users.length ? users.map((user) => `<tr><td><div class="user-cell"><span class="small-avatar">${initials(user.name)}</span><span><strong>${escapeHtml(user.name)}</strong><small>${escapeHtml(user.email)} Â· ${escapeHtml(user.id)}</small></span></div></td><td><span class="status-pill ${user.status}">${escapeHtml(user.status)}</span></td><td><strong>${number(user.credits)}</strong></td><td>${number(user.purchases)}</td><td>${money(user.spent)}</td><td>${escapeHtml(user.lastActive)}</td><td><button class="manage-button" type="button" data-manage-user="${escapeHtml(user.id)}">Manage</button></td></tr>`).join("") : `<tr><td class="empty-cell" colspan="7">No users match the selected filters.</td></tr>`;
   $("#userTableSummary").textContent = `Showing ${users.length} of ${platformUsers.length} users`;
   $$('[data-manage-user]').forEach((button) => button.addEventListener("click", () => openUserDrawer(button.dataset.manageUser)));
 }
@@ -393,8 +388,8 @@ function renderUsage() {
   $("#sidebarUsageCount").textContent = number(allUsers.length);
   $("#usageMetrics").innerHTML = [
     metricCard("Credits spent", number(safeNumber(totals.recordedCredits)), "Confirmed Morphly AI usage", "", "AI"),
-    metricCard("Generation time", formatDuration(totals.recordedSeconds), `${number(safeNumber(totals.sessions))} provider sessions`, "", "◷"),
-    metricCard("Wallet credits", number(walletCredits), "Remaining across users listed below", "", "◫"),
+    metricCard("Generation time", formatDuration(totals.recordedSeconds), `${number(safeNumber(totals.sessions))} provider sessions`, "", "â—·"),
+    metricCard("Wallet credits", number(walletCredits), "Remaining across users listed below", "", "â—«"),
     metricCard("Usage warnings", number(safeNumber(totals.usersWithUsageGaps)), `${number(safeNumber(totals.untrackedExposureCredits))} potential untracked credits`, "", "!")
   ].join("");
 
@@ -433,7 +428,7 @@ function renderUsage() {
   }).join("") : '<tr><td class="empty-cell" colspan="8">No AI usage matches the selected period and filters.</td></tr>';
 
   $("#usageTableSummary").textContent = `Showing ${users.length} of ${allUsers.length} users with AI activity`;
-  $("#usagePeriodSummary").textContent = `Last ${safeNumber(usage.periodDays) || safeNumber(state.period)} days · updated ${formatDateTime(usage.asOf)}`;
+  $("#usagePeriodSummary").textContent = `Last ${safeNumber(usage.periodDays) || safeNumber(state.period)} days Â· updated ${formatDateTime(usage.asOf)}`;
 }
 
 function renderTransactions() {
@@ -442,8 +437,8 @@ function renderTransactions() {
   const revenue = successful.reduce((sum, item) => sum + safeNumber(item.amount), 0);
   const credits = successful.reduce((sum, item) => sum + safeNumber(item.credits), 0);
   $("#transactionMetrics").innerHTML = [
-    metricCard("Successful payments", number(successful.length), visibleTransactions.length + " total attempts", "", "✓"),
-    metricCard("Collected", money(revenue), "Verified customer revenue in selected period", "", "₦"),
+    metricCard("Successful payments", number(successful.length), visibleTransactions.length + " total attempts", "", "âœ“"),
+    metricCard("Collected", money(revenue), "Verified customer revenue in selected period", "", "â‚¦"),
     metricCard("Credits granted", number(credits), "From verified purchases in selected period", "", "+"),
     metricCard("Failed or pending", number(visibleTransactions.length - successful.length), "Requires payment review", "", "!")
   ].join("");
@@ -467,10 +462,10 @@ function renderPackages() {
   const averagePerHundred = activePackages.length ? activePackages.reduce((sum, item) => sum + (item.price / item.credits) * 100, 0) / activePackages.length : 0;
   $("#sidebarPackageCount").textContent = number(activePackages.length);
   $("#packageMetrics").innerHTML = [
-    metricCard("Active packages", number(activePackages.length), `${state.packages.length} packages created`, "", "▣"),
-    metricCard("Package purchases", number(purchases), "Across current offers", "", "✓"),
-    metricCard("Package revenue", money(revenue), "Verified completed transactions", "", "₦"),
-    metricCard("Average price / 100", money(averagePerHundred), "Across active packages", "", "↗")
+    metricCard("Active packages", number(activePackages.length), `${state.packages.length} packages created`, "", "â–£"),
+    metricCard("Package purchases", number(purchases), "Across current offers", "", "âœ“"),
+    metricCard("Package revenue", money(revenue), "Verified completed transactions", "", "â‚¦"),
+    metricCard("Average price / 100", money(averagePerHundred), "Across active packages", "", "â†—")
   ].join("");
   $("#packageTableBody").innerHTML = packages.length ? packages.map((item) => `<tr><td><div class="package-cell"><strong>${escapeHtml(item.name)}${item.featured ? '<span class="featured-badge">Recommended</span>' : ""}</strong><small>${escapeHtml(item.description || "No description")}</small></div></td><td><span class="status-pill ${item.status === "active" ? "success" : "pending"}">${escapeHtml(item.status)}</span></td><td><strong>${money(item.price)}</strong></td><td>${number(item.credits)}</td><td>${money((item.price / item.credits) * 100)}</td><td>${number(item.purchases)}</td><td><div class="row-actions"><button class="manage-button" type="button" data-edit-package="${escapeHtml(item.id)}">Edit</button><button class="manage-button" type="button" data-toggle-package="${escapeHtml(item.id)}">${item.status === "active" ? "Pause" : "Activate"}</button></div></td></tr>`).join("") : `<tr><td class="empty-cell" colspan="7">No packages match this status.</td></tr>`;
   $$('[data-edit-package]').forEach((button) => button.addEventListener("click", () => beginPackageEdit(button.dataset.editPackage)));
@@ -491,8 +486,8 @@ function renderPackages() {
 function populateReconciliationOptions() {
   const userSelect = $("#reconcileUserId");
   const packageSelect = $("#reconcilePackageId");
-  userSelect.innerHTML = `<option value="">Select customer</option>${state.users.map((user) => `<option value="${escapeHtml(user.id)}">${escapeHtml(user.email)} · ${number(user.credits)} credits</option>`).join("")}`;
-  packageSelect.innerHTML = `<option value="">Select package purchased</option>${state.packages.filter((pkg) => pkg.status === "active").map((pkg) => `<option value="${escapeHtml(pkg.id)}">${escapeHtml(pkg.name)} · ${money(pkg.price)} · ${number(pkg.credits)} credits</option>`).join("")}`;
+  userSelect.innerHTML = `<option value="">Select customer</option>${state.users.map((user) => `<option value="${escapeHtml(user.id)}">${escapeHtml(user.email)} Â· ${number(user.credits)} credits</option>`).join("")}`;
+  packageSelect.innerHTML = `<option value="">Select package purchased</option>${state.packages.filter((pkg) => pkg.status === "active").map((pkg) => `<option value="${escapeHtml(pkg.id)}">${escapeHtml(pkg.name)} Â· ${money(pkg.price)} Â· ${number(pkg.credits)} credits</option>`).join("")}`;
 }
 
 async function handleReconcilePayment(event) {
@@ -501,7 +496,7 @@ async function handleReconcilePayment(event) {
   const button = event.submitter;
   error.textContent = "";
   button.disabled = true;
-  button.textContent = "Verifying with Flutterwave…";
+  button.textContent = "Verifying with Flutterwaveâ€¦";
   try {
     const result = await AdminAPI.reconcilePayment(
       $("#reconcileTransactionId").value.trim(), $("#reconcileUserId").value,
@@ -550,7 +545,7 @@ function cancelPackageEdit() {
 function updatePackagePreview() {
   const price = Number($("#packagePrice").value);
   const credits = Number($("#packageCredits").value);
-  $("#packagePreview").querySelector("strong").textContent = price > 0 && credits > 0 ? money((price / credits) * 100) : "₦0";
+  $("#packagePreview").querySelector("strong").textContent = price > 0 && credits > 0 ? money((price / credits) * 100) : "â‚¦0";
 }
 
 async function handleCreatePackage(event) {
@@ -568,7 +563,7 @@ async function handleCreatePackage(event) {
     return;
   }
   if (!Number.isFinite(price) || price < 100 || price > 100000000) {
-    error.textContent = "Enter a price between ₦100 and ₦100,000,000.";
+    error.textContent = "Enter a price between â‚¦100 and â‚¦100,000,000.";
     return;
   }
   if (!Number.isFinite(credits) || credits < 1 || credits > 10000000) {
@@ -613,15 +608,15 @@ function renderLogs() {
   const critical = logs.filter((log) => log.severity === "critical").reduce((sum, log) => sum + safeNumber(log.count), 0);
   const data = filteredMetrics();
   $("#logMetrics").innerHTML = [
-    metricCard("Logged events", number(total), "Grouped occurrences in selected period", "", "≡"),
+    metricCard("Logged events", number(total), "Grouped occurrences in selected period", "", "â‰¡"),
     metricCard("Critical events", number(critical), "Requires investigation", "", "!"),
-    metricCard("Session success", percentage(data.successfulSessions, data.sessions), number(data.sessions) + " sessions", "", "✓"),
-    metricCard("API error rate", percentage(data.apiErrors, data.apiRequests), number(data.apiErrors) + " errors", "", "↯")
+    metricCard("Session success", percentage(data.successfulSessions, data.sessions), number(data.sessions) + " sessions", "", "âœ“"),
+    metricCard("API error rate", percentage(data.apiErrors, data.apiRequests), number(data.apiErrors) + " errors", "", "â†¯")
   ].join("");
   $("#logTableBody").innerHTML = logs.length
     ? logs.map((log) => [
       "<tr><td><code>", escapeHtml(log.event), "</code></td><td><strong>", escapeHtml(log.message),
-      "</strong><small class=\"usage-detail\">", escapeHtml(`${log.recordSource} · ${log.source}`), "</small></td><td>", escapeHtml(log.platform),
+      "</strong><small class=\"usage-detail\">", escapeHtml(`${log.recordSource} Â· ${log.source}`), "</small></td><td>", escapeHtml(log.platform),
       "</td><td>", escapeHtml(log.user), "</td><td>", number(log.count),
       "</td><td><span class=\"status-pill ", escapeHtml(log.severity), "\">", escapeHtml(log.severity),
       "</span></td><td>", escapeHtml(formatDateTime(log.timestamp)), "</td></tr>"
@@ -679,7 +674,7 @@ function renderReferrals() {
 }
 
 function renderAll() {
-  $("#sidebarUserCount").textContent = state.totalUsers === null ? "—" : number(state.totalUsers);
+  $("#sidebarUserCount").textContent = state.totalUsers === null ? "â€”" : number(state.totalUsers);
   const renderView = {
     overview: renderOverview, users: renderUsers, usage: renderUsage,
     referrals: renderReferrals, transactions: renderTransactions,
@@ -1268,19 +1263,22 @@ async function startAuthenticatedApp() {
 }
 
 async function init() {
-  const response = await fetch(`${CONFIG.apiBase}${CONFIG.endpoints.config}`, { signal: AbortSignal.timeout(15000) });
-  const config = await response.json();
-  if (!config.supabaseUrl || !config.supabaseAnonKey) throw new Error("Supabase public configuration is missing.");
-  window.morphlySupabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-  });
-  const session = (await window.morphlySupabase.auth.getSession()).data.session;
-  window.morphlyAccessToken = session?.access_token || null;
-  window.morphlySupabase.auth.onAuthStateChange((_event, nextSession) => {
-    window.morphlyAccessToken = nextSession?.access_token || null;
-  });
-  if (session) {
-    try { const me = await AdminAPI.request(CONFIG.endpoints.me); if (me.isAdmin) { state.currentAdmin = me; await startAuthenticatedApp(); return; } } catch (error) { $("#loginError").textContent = error.message; }
+  await fetch(`${CONFIG.apiBase}${CONFIG.endpoints.config}`, { signal: AbortSignal.timeout(15000) }).catch(() => null);
+  window.vixyAccessToken = localStorage.getItem("vixy:admin-token");
+  if (window.vixyAccessToken) {
+    try {
+      const me = await AdminAPI.request(CONFIG.endpoints.me);
+      const adminUser = me.user || me;
+      if (adminUser.isAdmin) {
+        state.currentAdmin = adminUser;
+        await startAuthenticatedApp();
+        return;
+      }
+    } catch (error) {
+      localStorage.removeItem("vixy:admin-token");
+      window.vixyAccessToken = null;
+      $("#loginError").textContent = error.message;
+    }
   }
   const loginButton = $('#adminLoginForm button[type="submit"]');
   loginButton.disabled = false;
@@ -1293,12 +1291,20 @@ async function init() {
     $("#adminLoginForm").setAttribute("aria-busy", "true");
     $("#loginError").textContent = "";
     try {
-      const { data, error } = await window.morphlySupabase.auth.signInWithPassword({ email: $("#adminEmail").value.trim().toLowerCase(), password: $("#adminPassword").value });
-      if (error) throw error;
-      window.morphlyAccessToken = data.session?.access_token || null;
+      const authResponse = await fetch(`${CONFIG.apiBase}/api/auth`, {
+        method: "POST",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "login", email: $("#adminEmail").value.trim().toLowerCase(), password: $("#adminPassword").value })
+      });
+      const authData = await authResponse.json().catch(() => ({}));
+      if (!authResponse.ok) throw new Error(authData.error || authData.message || "Unable to sign in.");
+      window.vixyAccessToken = authData.token || null;
+      localStorage.setItem("vixy:admin-token", window.vixyAccessToken || "");
       const me = await AdminAPI.request(CONFIG.endpoints.me);
-      if (!me.isAdmin) throw new Error("Admin access required.");
-      state.currentAdmin = me;
+      const adminUser = me.user || me;
+      if (!adminUser.isAdmin) throw new Error("Admin access required.");
+      state.currentAdmin = adminUser;
       await startAuthenticatedApp();
     } catch (error) {
       $("#loginError").textContent = error.message || "Unable to sign in. Please try again.";

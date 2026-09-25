@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.26)
 
-project(MorphlyMediaFoundationCamera VERSION 1.0.0 LANGUAGES CXX)
+project(VixyMediaFoundationCamera VERSION 1.0.0 LANGUAGES CXX)
 
 if(NOT WIN32)
-    message(FATAL_ERROR "The Morphly Media Foundation camera is available on Windows only.")
+    message(FATAL_ERROR "The Vixy Media Foundation camera is available on Windows only.")
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
@@ -47,7 +47,7 @@ target_link_libraries(morphly_virtualcam_mf PRIVATE
     shlwapi
 )
 set_target_properties(morphly_virtualcam_mf PROPERTIES
-    OUTPUT_NAME "MorphlyVirtualCameraMF"
+    OUTPUT_NAME "VixyVirtualCameraMF"
 )
 if(MSVC)
     target_link_options(morphly_virtualcam_mf PRIVATE
@@ -58,11 +58,11 @@ if(MSVC)
     )
 endif()
 
-add_executable(morphly_cam_registrar
+add_executable(vixy_cam_registrar
     src/common/morphly_ids.cpp
     src/tools/registrar/main.cpp
 )
-target_link_libraries(morphly_cam_registrar PRIVATE
+target_link_libraries(vixy_cam_registrar PRIVATE
     advapi32
     mf
     mfplat

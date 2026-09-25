@@ -5,7 +5,7 @@ export const DASHBOARD_TOUR_VERSION = 1;
 export const dashboardTourSteps: Step[] = [
   {
     target: '[data-tour="dashboard"]',
-    title: 'Welcome to Morphly',
+    title: 'Welcome to Vixy',
     content: (
       <p>
         This quick guide will show you how to select your camera, upload an image, start and stop
@@ -26,7 +26,7 @@ export const dashboardTourSteps: Step[] = [
           or USB camera connected to your computer.
         </p>
         <p className="rounded-lg border border-warning/30 bg-warning-soft p-2.5 text-warning">
-          Do not select Morphly Virtual Camera, Avatar Mimic Real Time Windows Virtual Camera, OBS
+          Do not select Vixy Virtual Camera, Avatar Mimic Real Time Windows Virtual Camera, OBS
           Virtual Camera, VB-CABLE or any other virtual camera.
         </p>
         <p>This selector is the physical input camera that captures your face.</p>
@@ -40,7 +40,7 @@ export const dashboardTourSteps: Step[] = [
     content: (
       <div className="space-y-3">
         <p>
-          Upload a clear image of the face or avatar you want Morphly to mimic. Select your laptop
+          Upload a clear image of the face or avatar you want Vixy to mimic. Select your laptop
           camera before uploading the image and before starting the stream.
         </p>
         <p>For the best result, use a clear front-facing image with good lighting and only one visible face.</p>
@@ -55,10 +55,10 @@ export const dashboardTourSteps: Step[] = [
       <div className="space-y-3">
         <p>
           After selecting your physical laptop camera and uploading an image, click Start. Morphly
-          will process your camera feed and publish the transformed output through the Morphly virtual camera.
+          will process your camera feed and publish the transformed output through the Vixy virtual camera.
         </p>
         <p className="font-semibold text-warning">
-          Input = physical laptop camera. Output = Morphly virtual camera.
+          Input = physical laptop camera. Output = Vixy virtual camera.
         </p>
       </div>
     ),
@@ -69,7 +69,7 @@ export const dashboardTourSteps: Step[] = [
     title: 'Stop the stream when finished',
     content: (
       <p>
-        When you finish streaming or making a call, click Stop to end the Morphly processing session
+        When you finish streaming or making a call, click Stop to end the Vixy processing session
         and prevent unnecessary credit usage.
       </p>
     ),
@@ -91,7 +91,7 @@ export const dashboardTourSteps: Step[] = [
     title: 'Check for the latest version',
     content: (
       <p>
-        Open Settings and select Check for Updates to see whether a newer Morphly version is
+        Open Settings and select Check for Updates to see whether a newer Vixy version is
         available. Download and install updates to receive the latest fixes and improvements.
       </p>
     ),

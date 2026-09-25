@@ -26,8 +26,8 @@ async function fixture(t, entries = []) {
 
 test('desktop package retains the bridge while excluding the optional engine', async t => {
   const output = await fixture(t);
-  await mkdir(path.join(output, 'resources/morphlyvc'), { recursive: true });
-  await writeFile(path.join(output, 'resources/morphlyvc/meanvc-realtime.py'), 'bridge');
+  await mkdir(path.join(output, 'resources/vixyvc'), { recursive: true });
+  await writeFile(path.join(output, 'resources/vixyvc/meanvc-realtime.py'), 'bridge');
   assert.ok(await verifyPackage(output) > 0);
 });
 
@@ -41,6 +41,6 @@ test('packaging rejects repository and voice-runtime files even when nested insi
 test('packaging rejects unpacked voice files and oversized payloads before NSIS', async t => {
   const output = await fixture(t);
   await assert.rejects(verifyPackage(output, { maxBytes: 1 }), /too large/);
-  await mkdir(path.join(output, 'resources/morphlyvc/runtime-40ms'), { recursive: true });
+  await mkdir(path.join(output, 'resources/vixyvc/runtime-40ms'), { recursive: true });
   await assert.rejects(verifyPackage(output), /Unexpected file/);
 });

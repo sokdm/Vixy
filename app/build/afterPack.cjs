@@ -6,10 +6,10 @@ const UNITY_CAPTURE_FILTERS = [
   'UnityCaptureFilter32.dll',
   'UnityCaptureFilter64.dll'
 ];
-const SENDER_EXE = 'morphly_unity_capture_sender.exe';
+const SENDER_EXE = 'vixy_unity_capture_sender.exe';
 const MEDIA_FOUNDATION_CAMERA_ARTIFACTS = [
-  'MorphlyVirtualCameraMF.dll',
-  'morphly_cam_registrar.exe'
+  'VixyVirtualCameraMF.dll',
+  'vixy_cam_registrar.exe'
 ];
 const BUILD_CONFIGS = ['Release', 'RelWithDebInfo', 'Debug'];
 

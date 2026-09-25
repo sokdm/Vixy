@@ -1,4 +1,4 @@
-import { app, shell } from 'electron';
+﻿import { app, shell } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import { downloadUpdateFile } from './update-download.js';
@@ -8,7 +8,7 @@ import {
   verifyUpdateFile
 } from './update-integrity.js';
 
-const GITHUB_RELEASES_URL = 'https://github.com/samuellucky2424-afk/morphly/releases';
+const GITHUB_RELEASES_URL = process.env.VIXY_RELEASES_URL || 'https://github.com/sokdm/vixy/releases';
 
 function normalizePackageType(value) {
   return value === 'portable' ? 'portable' : 'installer';
@@ -17,13 +17,13 @@ function normalizePackageType(value) {
 function buildAssetName(version, packageType) {
   const safeVersion = typeof version === 'string' ? version.trim() : String(version ?? '').trim();
   return packageType === 'portable'
-    ? `Morphly-${safeVersion}.exe`
-    : `Morphly-Setup-${safeVersion}.exe`;
+    ? `Vixy-${safeVersion}.exe`
+    : `Vixy-Setup-${safeVersion}.exe`;
 }
 
 const DEFAULT_MANIFEST_URL = process.env.MORPHLY_UPDATE_MANIFEST_URL
   || process.env.VITE_UPDATE_MANIFEST_URL
-  || 'https://morphly-alpha.vercel.app/api/version';
+  || 'https://your-domain.example/api/version';
 
 function safeStringify(value) {
   try {
@@ -93,7 +93,7 @@ function buildDownloadCachePath(version, assetName) {
   if (!/^\d+\.\d+\.\d+(?:[-+][a-zA-Z0-9.-]+)?$/.test(version)) {
     throw new Error('Invalid update version.');
   }
-  const safeAssetName = path.basename(assetName || `Morphly Setup ${version}.exe`);
+  const safeAssetName = path.basename(assetName || `Vixy Setup ${version}.exe`);
   return path.join(app.getPath('userData'), 'updates', version, safeAssetName);
 }
 
@@ -617,7 +617,7 @@ export function createDesktopUpdater(options = {}) {
       }, `${source}:install-start`);
 
       // Use shell.openPath so Windows launches the installer through the shell
-      // association — this triggers UAC elevation correctly (same as double-clicking).
+      // association â€” this triggers UAC elevation correctly (same as double-clicking).
       // spawn() with windowsHide:true suppresses the UAC prompt, causing the installer
       // to run without admin rights and fail to replace the existing installation.
       const openError = await shell.openPath(state.downloadedPath);

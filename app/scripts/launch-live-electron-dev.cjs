@@ -1,28 +1,12 @@
 const { spawn } = require('node:child_process');
 
-const DEPLOYED_APP_ORIGIN = 'https://morphly-alpha.vercel.app';
+const DEPLOYED_APP_ORIGIN = process.env.VIXY_LIVE_ORIGIN || 'https://your-domain.example';
 const PUBLIC_CONFIG_URL = `${DEPLOYED_APP_ORIGIN}/api/public-config`;
 
 function validatePublicConfig(config) {
-  const supabaseUrl = typeof config?.supabaseUrl === 'string'
-    ? config.supabaseUrl.trim()
-    : '';
-  const supabaseAnonKey = typeof config?.supabaseAnonKey === 'string'
-    ? config.supabaseAnonKey.trim()
-    : '';
-
-  let parsedUrl;
-  try {
-    parsedUrl = new URL(supabaseUrl);
-  } catch {
-    throw new Error('The live backend returned an invalid public Supabase URL.');
+  if (config?.databaseProvider !== 'mongodb' || config?.authProvider !== 'vixy') {
+    throw new Error('The live backend is not returning the expected Vixy public configuration.');
   }
-
-  if (parsedUrl.protocol !== 'https:' || supabaseAnonKey.length < 20) {
-    throw new Error('The live backend public configuration is incomplete.');
-  }
-
-  return { supabaseUrl: parsedUrl.toString(), supabaseAnonKey };
 }
 
 async function fetchPublicConfig() {
@@ -35,11 +19,13 @@ async function fetchPublicConfig() {
     throw new Error(`The live backend returned HTTP ${response.status} for its public configuration.`);
   }
 
-  return validatePublicConfig(await response.json());
+  const config = await response.json();
+  validatePublicConfig(config);
+  return config;
 }
 
 async function main() {
-  const publicConfig = await fetchPublicConfig();
+  await fetchPublicConfig();
   const npmCliPath = process.env.npm_execpath;
   if (!npmCliPath) {
     throw new Error('npm did not provide its executable entry point.');
@@ -49,12 +35,10 @@ async function main() {
     ...process.env,
     VITE_API_PROXY_TARGET: DEPLOYED_APP_ORIGIN,
     VITE_API_URL: DEPLOYED_APP_ORIGIN,
-    VITE_SUPABASE_URL: publicConfig.supabaseUrl,
-    VITE_SUPABASE_ANON_KEY: publicConfig.supabaseAnonKey,
   };
 
-  console.info('Starting Morphly Desktop against the live Vercel backend.');
-  console.info('Public client configuration: verified (values hidden).');
+  console.info('Starting Vixy Desktop against the live backend.');
+  console.info('Public client configuration: verified.');
 
   const child = spawn(process.execPath, [npmCliPath, 'run', 'electron:dev:live:inner'], {
     cwd: process.cwd(),
@@ -63,30 +47,13 @@ async function main() {
     windowsHide: false,
   });
 
-  for (const signal of ['SIGINT', 'SIGTERM']) {
-    process.on(signal, () => {
-      if (!child.killed) {
-        child.kill(signal);
-      }
-    });
-  }
-
-  child.on('error', (error) => {
-    console.error(`Unable to launch the live desktop development runtime: ${error.message}`);
-    process.exitCode = 1;
-  });
-
   child.on('exit', (code, signal) => {
-    if (signal) {
-      process.kill(process.pid, signal);
-      return;
-    }
-
-    process.exitCode = code ?? 1;
+    if (signal) process.kill(process.pid, signal);
+    process.exit(code ?? 0);
   });
 }
 
 main().catch((error) => {
-  console.error(`Unable to prepare the live desktop development runtime: ${error.message}`);
-  process.exitCode = 1;
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(1);
 });

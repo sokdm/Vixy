@@ -1,33 +1,38 @@
 // @ts-nocheck
 import { createAdminHandler } from './admin-handler.js';
-import { createEngagementHandler } from './api/customer-engagement.js';
-import creditPackagesHandler from './api/credit-packages.js';
-import endSessionHandler from './api/end-session.js';
 import ensureUserWalletHandler from './api/ensure-user-wallet.js';
+import authHandler from './api/auth.js';
 import accountHandler from './api/account.js';
-import flutterwaveWebhookHandler from './api/flutterwave-webhook.js';
-import heartbeatHandler from './api/heartbeat.js';
 import publicConfigHandler from './api/public-config.js';
+import passwordResetHandler from './api/password-reset.js';
 import rateHandler from './api/rate.js';
 import referralCodeHandler from './api/referral-code.js';
 import referralsHandler from './api/referrals.js';
-import sessionStatusHandler from './api/session-status.js';
-import startSessionHandler from './api/start-session.js';
-import verifyPaymentHandler from './api/verify-payment.js';
-import initiateFlutterwavePaymentHandler from './api/initiate-flutterwave-payment.js';
-import initiateCryptoPaymentHandler from './api/initiate-crypto-payment.js';
-import verifyCryptoPaymentHandler from './api/verify-crypto-payment.js';
-import ivorypayWebhookHandler from './api/ivorypay-webhook.js';
+import morphlyTokenHandler from './api/morphly-token.js';
 import versionHandler from './api/version.js';
 import walletHandler from './api/wallet.js';
 import telemetryHandler, { errorLogHandler } from './api/telemetry.js';
 
+function pendingMongoHandler(feature) {
+  return async function handler(req, res) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    return res.status(501).json({
+      error: `${feature} is being reconnected to the Vixy Mongo backend.`,
+      provider: 'mongodb',
+    });
+  };
+}
+
 const routeHandlers = {
-  feedback: createEngagementHandler('feedback'),
-  announcements: createEngagementHandler('announcements'),
-  'admin-engagement': createEngagementHandler('admin-engagement'),
-  'email-preferences': createEngagementHandler('email-preferences'),
-  'engagement-cron': createEngagementHandler('engagement-cron'),
+  feedback: pendingMongoHandler('Customer feedback'),
+  announcements: pendingMongoHandler('Announcements'),
+  'admin-engagement': pendingMongoHandler('Admin engagement'),
+  'email-preferences': pendingMongoHandler('Email preferences'),
+  'engagement-cron': pendingMongoHandler('Engagement cron'),
+  auth: authHandler,
   account: accountHandler,
   'admin-audit-log': createAdminHandler('audit-log'),
   'admin-credit-packages': createAdminHandler('credit-packages'),
@@ -38,23 +43,25 @@ const routeHandlers = {
   'admin-transactions': createAdminHandler('transactions'),
   'admin-usage': createAdminHandler('usage'),
   'admin-logs': createAdminHandler('logs'),
-  'credit-packages': creditPackagesHandler,
-  'end-session': endSessionHandler,
+  'credit-packages': pendingMongoHandler('Credit packages'),
+  'end-session': pendingMongoHandler('Realtime session billing'),
   'ensure-user-wallet': ensureUserWalletHandler,
-  'flutterwave-webhook': flutterwaveWebhookHandler,
-  heartbeat: heartbeatHandler,
+  'flutterwave-webhook': pendingMongoHandler('Flutterwave webhooks'),
+  heartbeat: pendingMongoHandler('Realtime heartbeat billing'),
   'public-config': publicConfigHandler,
   rate: rateHandler,
   'referral-code': referralCodeHandler,
   referrals: referralsHandler,
-  'session-status': sessionStatusHandler,
-  'start-session': startSessionHandler,
-  'verify-payment': verifyPaymentHandler,
-  'initiate-flutterwave-payment': initiateFlutterwavePaymentHandler,
-  'flutterwave-payment-return': initiateFlutterwavePaymentHandler,
-  'initiate-crypto-payment': initiateCryptoPaymentHandler,
-  'verify-crypto-payment': verifyCryptoPaymentHandler,
-  'ivorypay-webhook': ivorypayWebhookHandler,
+  'session-status': pendingMongoHandler('Realtime session status'),
+  'start-session': morphlyTokenHandler,
+  'verify-payment': pendingMongoHandler('Payment verification'),
+  'initiate-flutterwave-payment': pendingMongoHandler('Flutterwave checkout'),
+  'flutterwave-payment-return': pendingMongoHandler('Flutterwave checkout return'),
+  'initiate-crypto-payment': pendingMongoHandler('Crypto checkout'),
+  'verify-crypto-payment': pendingMongoHandler('Crypto payment verification'),
+  'ivorypay-webhook': pendingMongoHandler('Ivorypay webhooks'),
+  'morphly-token': morphlyTokenHandler,
+  'password-reset': passwordResetHandler,
   version: versionHandler,
   wallet: walletHandler,
   telemetry: telemetryHandler,

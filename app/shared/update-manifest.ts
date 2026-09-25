@@ -1,4 +1,4 @@
-import fs from 'fs';
+﻿import fs from 'fs';
 import path from 'path';
 
 export type UpdatePackageType = 'installer' | 'portable';
@@ -24,8 +24,8 @@ export interface ManifestBuildOptions {
   expectedSize?: number | null;
 }
 
-export const GITHUB_OWNER = 'samuellucky2424-afk';
-export const GITHUB_REPO = 'morphly';
+export const GITHUB_OWNER = 'sokdm';
+export const GITHUB_REPO = 'Vixy';
 export const GITHUB_REPOSITORY_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`;
 export const GITHUB_RELEASES_URL = `${GITHUB_REPOSITORY_URL}/releases`;
 
@@ -40,8 +40,8 @@ export function normalizeVersion(version: string): string {
 export function buildAssetName(version: string, packageType: UpdatePackageType): string {
   const safeVersion = normalizeVersion(version);
   return packageType === 'portable'
-    ? `Morphly ${safeVersion}.exe`
-    : `Morphly Setup ${safeVersion}.exe`;
+    ? `Vixy-${safeVersion}.exe`
+    : `Vixy-Setup-${safeVersion}.exe`;
 }
 
 export function buildReleasePageUrl(version: string): string {
@@ -74,10 +74,10 @@ function readEnvText(env: NodeJS.ProcessEnv, keys: string[]): string | null {
 }
 
 export function resolveReleaseNotes(env: NodeJS.ProcessEnv = process.env): string | null {
-  const inlineNotes = readEnvText(env, ['MORPHLY_RELEASE_NOTES', 'RELEASE_NOTES']);
+  const inlineNotes = readEnvText(env, ['VIXY_RELEASE_NOTES', 'RELEASE_NOTES']);
   if (inlineNotes) return inlineNotes;
 
-  const notesFile = readEnvText(env, ['MORPHLY_RELEASE_NOTES_FILE']);
+  const notesFile = readEnvText(env, ['VIXY_RELEASE_NOTES_FILE']);
   if (notesFile) return readTextFileIfExists(path.resolve(notesFile));
 
   return null;
@@ -85,10 +85,10 @@ export function resolveReleaseNotes(env: NodeJS.ProcessEnv = process.env): strin
 
 export function resolveChecksum(packageType: UpdatePackageType, env: NodeJS.ProcessEnv = process.env): string | null {
   const scopedKey = packageType === 'portable'
-    ? ['MORPHLY_UPDATE_SHA256_PORTABLE', 'MORPHLY_UPDATE_CHECKSUM_PORTABLE']
-    : ['MORPHLY_UPDATE_SHA256_INSTALLER', 'MORPHLY_UPDATE_CHECKSUM_INSTALLER'];
+    ? ['VIXY_UPDATE_SHA256_PORTABLE', 'VIXY_UPDATE_CHECKSUM_PORTABLE']
+    : ['VIXY_UPDATE_SHA256_INSTALLER', 'VIXY_UPDATE_CHECKSUM_INSTALLER'];
 
-  const generic = readEnvText(env, ['MORPHLY_UPDATE_SHA256', 'MORPHLY_UPDATE_CHECKSUM']);
+  const generic = readEnvText(env, ['VIXY_UPDATE_SHA256', 'VIXY_UPDATE_CHECKSUM']);
   return readEnvText(env, scopedKey) ?? generic;
 }
 

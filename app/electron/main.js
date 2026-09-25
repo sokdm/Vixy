@@ -1,4 +1,4 @@
-import { spawn } from 'child_process';
+﻿import { spawn } from 'child_process';
 import { once } from 'events';
 
 import { app, BrowserWindow, systemPreferences, ipcMain, Menu, nativeImage, clipboard, shell, nativeTheme, dialog } from 'electron';
@@ -29,15 +29,15 @@ nativeTheme.themeSource = 'light';
 const isDevelopment = process.env.MORPHLY_DESKTOP_DEV === '1'
   || (!app.isPackaged && process.env.NODE_ENV !== 'production');
 const isPackagedRuntime = app.isPackaged && !isDevelopment;
-const RELEASES_URL = 'https://github.com/samuellucky2424-afk/morphly/releases';
-const MORPHLY_CAM_WINDOW_NAME = 'Morphly cam';
-const MORPHLY_CAM_WINDOW_WIDTH = 640;
-const MORPHLY_CAM_WINDOW_HEIGHT = 360;
-const UNITY_CAPTURE_SENDER_EXE = 'morphly_unity_capture_sender.exe';
+const RELEASES_URL = process.env.VIXY_RELEASES_URL || 'https://github.com/sokdm/vixy/releases';
+const VIXY_CAM_WINDOW_NAME = 'Vixy cam';
+const VIXY_CAM_WINDOW_WIDTH = 640;
+const VIXY_CAM_WINDOW_HEIGHT = 360;
+const UNITY_CAPTURE_SENDER_EXE = 'vixy_unity_capture_sender.exe';
 const UNITY_CAPTURE_REGISTRY_TIMEOUT_MS = 5000;
-const MEDIA_FOUNDATION_CAMERA_REGISTRAR_EXE = 'morphly_cam_registrar.exe';
+const MEDIA_FOUNDATION_CAMERA_REGISTRAR_EXE = 'vixy_cam_registrar.exe';
 const MEDIA_FOUNDATION_CAMERA_REGISTRAR_TIMEOUT_MS = 120000;
-const UNITY_CAPTURE_NAME = 'Morphly Virtual Camera';
+const UNITY_CAPTURE_NAME = 'Vixy Virtual Camera';
 const VIDEO_INPUT_DEVICE_CATEGORY = '{860BB310-5D01-11d0-BD3B-00A0C911CE86}';
 const UNITY_CAPTURE_FILTERS = [
   {
@@ -59,7 +59,7 @@ const WINDOWS_FILETIME_EPOCH_OFFSET = 116444736000000000n;
 const VIRTUAL_CAM_STATS_INTERVAL_MS = 5000;
 const VIRTUAL_CAM_BLACK_SAMPLE_PIXELS = 512;
 
-app.setName('Morphly Desktop');
+app.setName('Vixy Desktop');
 loadEnvironmentVariables();
 
 const VIRTUAL_CAM_PROFILE = selectVirtualCameraProfile();
@@ -145,7 +145,7 @@ function logVirtualCameraStats(controller, reason) {
   const elapsedMs = Math.max(1, now - controller.stats.startedAt);
   const fps = (controller.stats.framesSent * 1000) / elapsedMs;
   console.info(
-    `Morphly cam bridge stats (${reason}): frames=${controller.stats.framesSent} fps=${fps.toFixed(2)} ` +
+    `Vixy cam bridge stats (${reason}): frames=${controller.stats.framesSent} fps=${fps.toFixed(2)} ` +
     `rendererFrames=${controller.stats.rendererFramesReceived} captureFallbacks=${controller.stats.captureFallbacks} ` +
     `captureFailures=${controller.stats.captureFailures} publishFailures=${controller.stats.publishFailures} ` +
     `droppedFrames=${controller.stats.rendererFramesDropped} receiverProbes=${controller.stats.receiverProbes} ` +
@@ -457,7 +457,7 @@ async function ensureUnityCaptureRegistration() {
   if (missingViews.length > 0) {
     return {
       success: false,
-      error: `Morphly Virtual Camera needs repair for ${missingViews.join(' and ')} applications. Open Settings → Virtual Camera → Repair camera.`
+      error: `Vixy Virtual Camera needs repair for ${missingViews.join(' and ')} applications. Open Settings â†’ Virtual Camera â†’ Repair camera.`
     };
   }
 
@@ -470,7 +470,7 @@ async function ensureMediaFoundationCameraRegistration() {
   }
 
   if (!supportsMediaFoundationCamera(process.platform, os.release())) {
-    return { success: true, supported: false, warning: 'Modern Windows virtual-camera support requires Windows 11. Legacy camera apps can still use Morphly Virtual Camera.' };
+    return { success: true, supported: false, warning: 'Modern Windows virtual-camera support requires Windows 11. Legacy camera apps can still use Vixy Virtual Camera.' };
   }
   const probeResult = await runMediaFoundationCameraRegistrar(['probe-registration']);
   if (probeResult.ok) {
@@ -481,8 +481,8 @@ async function ensureMediaFoundationCameraRegistration() {
   return {
     success: false,
     error:
-      'Morphly Virtual Camera is not registered for WhatsApp and modern Windows apps. ' +
-      `Open Settings → Virtual Camera → Repair camera.${detail ? ` ${detail}` : ''}`,
+      'Vixy Virtual Camera is not registered for WhatsApp and modern Windows apps. ' +
+      `Open Settings â†’ Virtual Camera â†’ Repair camera.${detail ? ` ${detail}` : ''}`,
   };
 }
 
@@ -498,7 +498,7 @@ async function ensureVirtualCameraRegistration() {
     success: true,
     canRepair: process.platform === 'win32',
     warning: mediaFoundationResult.warning,
-    message: mediaFoundationResult.supported === false ? 'Legacy virtual-camera registration verified.' : 'Morphly Virtual Camera is registered for legacy and modern Windows camera apps.',
+    message: mediaFoundationResult.supported === false ? 'Legacy virtual-camera registration verified.' : 'Vixy Virtual Camera is registered for legacy and modern Windows camera apps.',
   };
 }
 
@@ -508,7 +508,7 @@ const cameraRepairService = createCameraRepairService({
     const supported = supportsMediaFoundationCamera(process.platform, os.release());
     const filters = UNITY_CAPTURE_FILTERS.map(filter => ({ bits: Number(filter.registryView), path: getExpectedUnityCaptureFilterPath(filter) }));
     const registrar = supported ? resolveMediaFoundationCameraRegistrarPath() : null;
-    if (filters.some(filter => !fs.existsSync(filter.path))) throw new Error('Camera components are missing from this installation. Run the latest Morphly installer.');
+    if (filters.some(filter => !fs.existsSync(filter.path))) throw new Error('Camera components are missing from this installation. Run the latest Vixy installer.');
     return executeCameraRepair(buildCameraRepairCommand({ windowsDirectory: process.env.SystemRoot || 'C:\\Windows', filters, registrar, mediaFoundationSupported: supported }));
   },
 });
@@ -551,7 +551,7 @@ async function publishFrameToVirtualCamera(controller, frameBytes, timestampHund
   if (isLikelyBlackFrame(frameBytes)) {
     controller.stats.blackFrames += 1;
     if ((controller.stats.blackFrames % controller.profile.frameRate) === 0) {
-      console.warn(`Morphly cam bridge published a black ${sourceLabel} frame.`);
+      console.warn(`Vixy cam bridge published a black ${sourceLabel} frame.`);
     }
   }
 
@@ -667,12 +667,12 @@ async function publishLatestRendererFrame(controller) {
     controller.lastPublishedAt = Date.now();
   } catch (error) {
     controller.stats.publishFailures += 1;
-    console.error('Failed to push Morphly output into the virtual camera bridge:', error);
+    console.error('Failed to push Vixy output into the virtual camera bridge:', error);
 
     if (!controller.stopping) {
       const message = formatErrorMessage(error);
       if (message.includes('EPIPE') || message.includes('EOF') || message.includes('not writable')) {
-        stopMorphlyCamPublisher();
+        stopVixyCamPublisher();
       }
     }
   } finally {
@@ -681,7 +681,7 @@ async function publishLatestRendererFrame(controller) {
   }
 }
 
-function scheduleMorphlyCamPublish(controller, delayMs = 0) {
+function scheduleVixyCamPublish(controller, delayMs = 0) {
   if (controller.stopping) {
     return;
   }
@@ -697,13 +697,13 @@ function scheduleMorphlyCamPublish(controller, delayMs = 0) {
         // polling at the configured frame rate so fresh renderer frames reach
         // both camera paths even while DirectShow reports no receiver.
         const frameIntervalMs = Math.max(1, Math.floor(1000 / controller.profile.frameRate));
-        scheduleMorphlyCamPublish(controller, Math.max(0, frameIntervalMs - elapsedMs));
+        scheduleVixyCamPublish(controller, Math.max(0, frameIntervalMs - elapsedMs));
       }
     });
   }, delayMs);
 }
 
-function stopMorphlyCamPublisher() {
+function stopVixyCamPublisher() {
   if (!morphlyCamPublisher) {
     return { success: true, message: 'Virtual camera publisher is already stopped.' };
   }
@@ -742,7 +742,7 @@ function stopMorphlyCamPublisher() {
   return { success: true, message: 'Virtual camera publisher stopped.' };
 }
 
-function ensureMorphlyCamPublisher() {
+function ensureVixyCamPublisher() {
   if (process.platform !== 'win32') {
     return { success: false, error: 'Virtual camera publishing is only supported on Windows.' };
   }
@@ -754,12 +754,12 @@ function ensureMorphlyCamPublisher() {
   if (morphlyCamPublisher && !morphlyCamPublisher.stopping) {
     return {
       success: true,
-      message: 'Morphly cam output is already being published.',
+      message: 'Vixy cam output is already being published.',
       profile: morphlyCamPublisher.profile
     };
   }
 
-  stopMorphlyCamPublisher();
+  stopVixyCamPublisher();
 
   try {
     const publisherPath = resolveUnityCaptureSenderPath();
@@ -808,11 +808,11 @@ function ensureMorphlyCamPublisher() {
           continue;
         }
 
-        console.info(`Morphly cam publisher: ${line}`);
-        if (line.includes('Waiting for an application to open Morphly Virtual Camera.')) {
+        console.info(`Vixy cam publisher: ${line}`);
+        if (line.includes('Waiting for an application to open Vixy Virtual Camera.')) {
           setVirtualCameraReceiverState(controller, false);
         } else if (
-          line.includes('Connected to the Morphly virtual camera.')
+          line.includes('Connected to the Vixy virtual camera.')
           || line.includes('Connected to the UnityCapture virtual camera.')
         ) {
           setVirtualCameraReceiverState(controller, true);
@@ -823,14 +823,14 @@ function ensureMorphlyCamPublisher() {
     child.stdin?.on('error', (error) => {
       if (!controller.stopping) {
         console.error('Virtual camera publisher stdin failed:', error);
-        stopMorphlyCamPublisher();
+        stopVixyCamPublisher();
       }
     });
 
     child.on('error', (error) => {
       if (!controller.stopping) {
         console.error('Failed to launch the virtual camera publisher:', error);
-        stopMorphlyCamPublisher();
+        stopVixyCamPublisher();
       }
     });
 
@@ -853,16 +853,16 @@ function ensureMorphlyCamPublisher() {
     });
 
     morphlyCamPublisher = controller;
-    scheduleMorphlyCamPublish(controller);
+    scheduleVixyCamPublish(controller);
 
     console.info(
-      `Morphly virtual camera profile: ${controller.profile.mode} ` +
+      `Vixy virtual camera profile: ${controller.profile.mode} ` +
       `${controller.profile.width}x${controller.profile.height}@${controller.profile.frameRate}.`
     );
 
     return {
       success: true,
-      message: `Publishing Morphly cam output via ${publisherPath}.`,
+      message: `Publishing Vixy cam output via ${publisherPath}.`,
       profile: controller.profile
     };
   } catch (error) {
@@ -887,7 +887,7 @@ function loadEnvironmentVariables() {
 function resolveUpdateManifestUrl() {
   return process.env.MORPHLY_UPDATE_MANIFEST_URL
     || process.env.VITE_UPDATE_MANIFEST_URL
-    || 'https://morphly-alpha.vercel.app/api/version';
+    || 'https://your-domain.example/api/version';
 }
 
 function resolveRendererDevUrl() {
@@ -992,15 +992,15 @@ function logDevelopmentRendererHealth(window) {
   }, 1000);
 }
 
-function isMorphlyCamPopup(details) {
-  return details.frameName === MORPHLY_CAM_WINDOW_NAME;
+function isVixyCamPopup(details) {
+  return details.frameName === VIXY_CAM_WINDOW_NAME;
 }
 
-function createMorphlyCamWindowOptions() {
+function createVixyCamWindowOptions() {
   return {
-    title: MORPHLY_CAM_WINDOW_NAME,
-    width: MORPHLY_CAM_WINDOW_WIDTH,
-    height: MORPHLY_CAM_WINDOW_HEIGHT,
+    title: VIXY_CAM_WINDOW_NAME,
+    width: VIXY_CAM_WINDOW_WIDTH,
+    height: VIXY_CAM_WINDOW_HEIGHT,
     minWidth: 360,
     minHeight: 220,
     backgroundColor: '#ffffff',
@@ -1031,9 +1031,9 @@ function keepWindowVisibleOnTop(window) {
   }
 }
 
-function configureMorphlyCamPopup(window) {
+function configureVixyCamPopup(window) {
   keepWindowVisibleOnTop(window);
-  window.setTitle(MORPHLY_CAM_WINDOW_NAME);
+  window.setTitle(VIXY_CAM_WINDOW_NAME);
   window.webContents.setFrameRate(30);
 
   window.on('show', () => {
@@ -1054,9 +1054,9 @@ function configureMorphlyCamPopup(window) {
     }
   });
 
-  const startResult = ensureMorphlyCamPublisher();
+  const startResult = ensureVixyCamPublisher();
   if (!startResult.success) {
-    console.error('Morphly cam virtual camera bridge did not start:', startResult.error ?? startResult.message);
+    console.error('Vixy cam virtual camera bridge did not start:', startResult.error ?? startResult.message);
   }
 }
 
@@ -1103,19 +1103,19 @@ function createWindow() {
     }
   });
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    if (isMorphlyCamPopup(details)) {
+    if (isVixyCamPopup(details)) {
       return {
         action: 'allow',
-        overrideBrowserWindowOptions: createMorphlyCamWindowOptions()
+        overrideBrowserWindowOptions: createVixyCamWindowOptions()
       };
     }
 
     return { action: 'allow' };
   });
   mainWindow.webContents.on('did-create-window', (window, details) => {
-    if (isMorphlyCamPopup(details)) {
+    if (isVixyCamPopup(details)) {
       morphlyCamWindow = window;
-      configureMorphlyCamPopup(window);
+      configureVixyCamPopup(window);
     }
   });
 
@@ -1137,7 +1137,7 @@ function createWindow() {
       return;
     }
 
-    const startResult = ensureMorphlyCamPublisher();
+    const startResult = ensureVixyCamPublisher();
     if (!startResult.success) {
       console.error('Main-window virtual camera bridge did not start:', startResult.error ?? startResult.message);
     }
@@ -1162,7 +1162,7 @@ function registerVirtualCameraHandlers() {
     if (virtualCameraLiveSession) return { success: false, error: 'Stop live streaming before repairing the camera.' };
     virtualCameraEnabled = false;
     virtualCameraOperationGeneration += 1;
-    stopMorphlyCamPublisher();
+    stopVixyCamPublisher();
     cameraRepairOperation = cameraRepairService.repair().finally(() => { cameraRepairOperation = null; });
     return cameraRepairOperation;
   });
@@ -1185,11 +1185,11 @@ function registerVirtualCameraHandlers() {
     if (!registrationResult.success) {
       virtualCameraLiveSession = false;
       virtualCameraEnabled = false;
-      stopMorphlyCamPublisher();
+      stopVixyCamPublisher();
       return registrationResult;
     }
 
-    const result = ensureMorphlyCamPublisher();
+    const result = ensureVixyCamPublisher();
     if (!result.success) virtualCameraLiveSession = false;
     return result;
   });
@@ -1198,7 +1198,7 @@ function registerVirtualCameraHandlers() {
     virtualCameraLiveSession = false;
     virtualCameraOperationGeneration += 1;
     virtualCameraEnabled = false;
-    return stopMorphlyCamPublisher();
+    return stopVixyCamPublisher();
   });
 
   ipcMain.on('virtual-camera:push-frame', (event, payload) => {
@@ -1248,7 +1248,7 @@ function registerUpdaterHandlers() {
 }
 
 if (process.platform === 'win32') {
-  app.setAppUserModelId('com.morphly.app');
+  app.setAppUserModelId('com.vixy.app');
 }
 
 function registerCameraHandlers() {
@@ -1288,7 +1288,7 @@ function registerClipboardHandlers() {
 
 function getVoiceEngineDataRoot() {
   return isPackagedRuntime
-    ? path.join(app.getPath('userData'), 'morphlyvc')
+    ? path.join(app.getPath('userData'), 'vixyvc')
     : path.resolve(__dirname, '../.meanvc');
 }
 
@@ -1300,7 +1300,7 @@ function resolveVoiceEngineRuntimeRoot(dataRoot) {
   }
 
   return isPackagedRuntime
-    ? path.join(process.resourcesPath, 'morphlyvc', 'runtime-40ms')
+    ? path.join(process.resourcesPath, 'vixyvc', 'runtime-40ms')
     : getVoiceEnginePath(dataRoot);
 }
 
@@ -1308,7 +1308,7 @@ function createMorphlyVcController() {
   const dataRoot = getVoiceEngineDataRoot();
   const bundledRuntimeRoot = resolveVoiceEngineRuntimeRoot(dataRoot);
   const bundledBridge = isPackagedRuntime
-    ? path.join(process.resourcesPath, 'morphlyvc', 'meanvc-realtime.py')
+    ? path.join(process.resourcesPath, 'vixyvc', 'meanvc-realtime.py')
     : path.resolve(__dirname, '../server/meanvc-realtime.py');
 
   fs.mkdirSync(dataRoot, { recursive: true });
@@ -1323,21 +1323,21 @@ function createMorphlyVcController() {
 function registerMorphlyVcHandlers() {
   const requireMainRenderer = (event) => {
     if (!mainWindow || mainWindow.isDestroyed() || event.sender.id !== mainWindow.webContents.id) {
-      throw new Error('MorphlyVC controls are available only from the Morphly dashboard.');
+      throw new Error('VixyVC controls are available only from the Vixy dashboard.');
     }
   };
   const runtime = () => {
     if (!morphlyVcRuntime) {
-      throw new Error('MorphlyVC is still starting.');
+      throw new Error('VixyVC is still starting.');
     }
     return morphlyVcRuntime;
   };
 
-  ipcMain.handle('morphlyvc:status', (event) => {
+  ipcMain.handle('vixyvc:status', (event) => {
     requireMainRenderer(event);
     return runtime().getStatus();
   });
-  ipcMain.handle('morphlyvc:reference', (event, payload) => {
+  ipcMain.handle('vixyvc:reference', (event, payload) => {
     requireMainRenderer(event);
     const bytes = payload?.data;
     const fileName = typeof payload?.fileName === 'string' ? payload.fileName : 'reference.wav';
@@ -1346,23 +1346,23 @@ function registerMorphlyVcHandlers() {
     }
     return runtime().saveReference(Buffer.from(bytes), fileName);
   });
-  ipcMain.handle('morphlyvc:prepare', (event, payload) => {
+  ipcMain.handle('vixyvc:prepare', (event, payload) => {
     requireMainRenderer(event);
     return runtime().prepare(payload ?? {});
   });
-  ipcMain.handle('morphlyvc:start', (event, payload) => {
+  ipcMain.handle('vixyvc:start', (event, payload) => {
     requireMainRenderer(event);
     return runtime().start(payload ?? {});
   });
-  ipcMain.handle('morphlyvc:pitch', (event, payload) => {
+  ipcMain.handle('vixyvc:pitch', (event, payload) => {
     requireMainRenderer(event);
     return runtime().setPitch(payload ?? {});
   });
-  ipcMain.handle('morphlyvc:stop', (event) => {
+  ipcMain.handle('vixyvc:stop', (event) => {
     requireMainRenderer(event);
     return runtime().stop();
   });
-  ipcMain.handle('morphlyvc:engine-status', (event) => {
+  ipcMain.handle('vixyvc:engine-status', (event) => {
     requireMainRenderer(event);
     const dataRoot = getVoiceEngineDataRoot();
     return {
@@ -1371,7 +1371,7 @@ function registerMorphlyVcHandlers() {
       available: isPackagedRuntime,
     };
   });
-  ipcMain.handle('morphlyvc:install-engine', (event) => {
+  ipcMain.handle('vixyvc:install-engine', (event) => {
     requireMainRenderer(event);
     if (voiceEngineInstallPromise) {
       return voiceEngineInstallPromise;
@@ -1383,8 +1383,8 @@ function registerMorphlyVcHandlers() {
         const confirmation = await dialog.showMessageBox(mainWindow, {
           type: 'question',
           title: 'Install voice engine',
-          message: 'Do you want to install the Morphly voice changer engine?',
-          detail: 'This optional download is several gigabytes and may take a while. You only need it for voice changing. Morphly will download and install it automatically.',
+          message: 'Do you want to install the Vixy voice changer engine?',
+          detail: 'This optional download is several gigabytes and may take a while. You only need it for voice changing. Vixy will download and install it automatically.',
           buttons: ['Install voice engine', 'Not now'],
           defaultId: 0,
           cancelId: 1,
@@ -1397,7 +1397,7 @@ function registerMorphlyVcHandlers() {
           version: app.getVersion(),
           onProgress: (progress) => {
             if (mainWindow && !mainWindow.isDestroyed()) {
-              mainWindow.webContents.send('morphlyvc:install-progress', progress);
+              mainWindow.webContents.send('vixyvc:install-progress', progress);
             }
           },
         });
@@ -1449,7 +1449,7 @@ function registerMorphlyVcHandlers() {
     if (!fs.existsSync(installerPath)) {
       return {
         success: false,
-        error: 'VB-CABLE installer not found. Please reinstall Morphly Desktop.',
+        error: 'VB-CABLE installer not found. Please reinstall Vixy Desktop.',
       };
     }
 
@@ -1535,7 +1535,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
-  stopMorphlyCamPublisher();
+  stopVixyCamPublisher();
   morphlyVcRuntime?.shutdown();
 
   if (desktopUpdater) {

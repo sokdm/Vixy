@@ -24,7 +24,7 @@ export interface ManifestBuildOptions {
   expectedSize?: number | null;
 }
 
-export const GITHUB_OWNER = 'samuellucky2424-afk';
+export const GITHUB_OWNER = 'sokdm';
 export const GITHUB_REPO = 'morphly';
 export const GITHUB_REPOSITORY_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`;
 export const GITHUB_RELEASES_URL = `${GITHUB_REPOSITORY_URL}/releases`;

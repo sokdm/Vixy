@@ -1,15 +1,13 @@
 {
-  "name": "morphly-api",
+  "name": "vixy-api",
   "version": "2.5.3",
   "private": true,
   "type": "module",
   "dependencies": {
-    "@supabase/supabase-js": "^2.100.1",
     "@xmaxai/sdk-global": "^1.1.7",
     "concurrently": "^9.2.1"
   },
   "scripts": {
-    "build:app": "npm install --prefix app && npm run build:app --prefix app",
-    "cleanup:stale-sessions": "npm run cleanup:stale-sessions --prefix app"
+    "build:app": "npm install --prefix app && npm run build:app --prefix app"
   }
 }

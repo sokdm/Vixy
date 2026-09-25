@@ -32,7 +32,7 @@ test('accepts a USB hardware webcam', () => {
 });
 
 test('rejects known Morphly, Avatar Mimic and OBS virtual cameras', () => {
-  assert.equal(isVirtualCamera('Morphly Virtual Camera'), true);
+  assert.equal(isVirtualCamera('Vixy Virtual Camera'), true);
   assert.equal(isVirtualCamera('Avatar Mimic Real Time Windows Virtual Camera'), true);
   assert.equal(isVirtualCamera('OBS Virtual Camera'), true);
 });
@@ -40,7 +40,7 @@ test('rejects known Morphly, Avatar Mimic and OBS virtual cameras', () => {
 test('allowed camera list excludes virtual inputs', () => {
   const devices = [
     camera('hp', 'HP Integrated Camera'),
-    camera('morphly', 'Morphly Virtual Camera'),
+    camera('morphly', 'Vixy Virtual Camera'),
     camera('usb', 'USB Camera'),
   ];
   assert.deepEqual(
@@ -52,7 +52,7 @@ test('allowed camera list excludes virtual inputs', () => {
 test('trusted process blocks no selection, missing selection and virtual selection', () => {
   const availableDevices = [
     camera('hp', 'HP Integrated Camera'),
-    camera('virtual', 'Morphly Virtual Camera'),
+    camera('virtual', 'Vixy Virtual Camera'),
   ];
   assert.equal(validateCameraSelectionForTrustedProcess({ availableDevices }).valid, false);
   assert.match(
@@ -64,7 +64,7 @@ test('trusted process blocks no selection, missing selection and virtual selecti
   );
   assert.equal(validateCameraSelectionForTrustedProcess({
     selectedDeviceId: 'virtual',
-    selectedLabel: 'Morphly Virtual Camera',
+    selectedLabel: 'Vixy Virtual Camera',
     availableDevices,
   }).valid, false);
 });

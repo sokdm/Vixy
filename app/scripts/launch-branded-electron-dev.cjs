@@ -6,7 +6,7 @@ const { spawn, spawnSync } = require('child_process');
 const appDirectory = path.resolve(__dirname, '..');
 const electronDirectory = path.join(appDirectory, 'node_modules', 'electron', 'dist');
 const sourceExecutable = path.join(electronDirectory, 'electron.exe');
-const brandedExecutable = path.join(electronDirectory, 'MorphlyDesktopDev.exe');
+const brandedExecutable = path.join(electronDirectory, 'VixyDesktopDev.exe');
 const iconPath = path.join(appDirectory, 'build', 'icon.ico');
 const appBuilder = path.join(
   appDirectory,
@@ -84,19 +84,19 @@ function prepareBrandedExecutable() {
     iconPath,
     '--set-version-string',
     'FileDescription',
-    'Morphly Desktop',
+    'Vixy Desktop',
     '--set-version-string',
     'ProductName',
-    'Morphly Desktop',
+    'Vixy Desktop',
     '--set-version-string',
     'CompanyName',
-    'Morphly',
+    'Vixy',
     '--set-version-string',
     'InternalName',
-    'MorphlyDesktopDev',
+    'VixyDesktopDev',
     '--set-version-string',
     'OriginalFilename',
-    'MorphlyDesktopDev.exe',
+    'VixyDesktopDev.exe',
     '--set-file-version',
     packageConfig.version,
     '--set-product-version',
@@ -132,7 +132,7 @@ function prepareBrandedExecutable() {
 
   if (editResult.status !== 0) {
     fs.rmSync(brandedExecutable, { force: true });
-    throw new Error(`Unable to apply the Morphly icon to the local Electron runtime (exit ${editResult.status}).`);
+    throw new Error(`Unable to apply the Vixy icon to the local Electron runtime (exit ${editResult.status}).`);
   }
 }
 
@@ -158,7 +158,7 @@ async function waitForPort(port, timeoutMs = 30000) {
     }
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
-  throw new Error(`Local Morphly service did not open port ${port}.`);
+  throw new Error(`Local Vixy service did not open port ${port}.`);
 }
 
 async function ensureService(port, argumentsList) {
@@ -221,7 +221,7 @@ async function launch() {
   }
 
   electronProcess.on('error', (error) => {
-    console.error('Unable to launch the branded Morphly Electron runtime:', error);
+    console.error('Unable to launch the branded Vixy Electron runtime:', error);
     process.exitCode = 1;
   });
 

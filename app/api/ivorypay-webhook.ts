@@ -1,7 +1,6 @@
 // @ts-nocheck
-import handler from '../server/api/ivorypay-webhook.js';
-
-// IvoryPay HMAC signs the exact request payload.
 export const config = { api: { bodyParser: false } };
 
-export default handler;
+export default function handler(_req, res) {
+  return res.status(501).json({ error: 'Crypto webhooks are being reconnected to the Vixy Mongo backend.' });
+}

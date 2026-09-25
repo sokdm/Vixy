@@ -37,8 +37,8 @@ namespace
     using Microsoft::WRL::RuntimeClass;
     using Microsoft::WRL::RuntimeClassFlags;
 
-    constexpr wchar_t kDirectShowDllName[] = L"MorphlyVirtualCamera.dll";
-    constexpr wchar_t kWindowsVirtualCameraDllName[] = L"MorphlyVirtualCameraMF.dll";
+    constexpr wchar_t kDirectShowDllName[] = L"VixyVirtualCamera.dll";
+    constexpr wchar_t kWindowsVirtualCameraDllName[] = L"VixyVirtualCameraMF.dll";
     constexpr HRESULT kVirtualCameraAlreadyRemoved = static_cast<HRESULT>(0xC00D36B2);
     constexpr DWORD kVirtualCameraEnumerationTimeoutMs = 15000;
     constexpr DWORD kVirtualCameraEnumerationRetryIntervalMs = 250;
@@ -48,9 +48,9 @@ namespace
 
     constexpr std::array<std::wstring_view, 3> kLegacyFriendlyNames =
     {
-        L"Morphly Cam",
-        L"Morphly Cam G1",
-        L"Morphly G1",
+        L"Vixy Cam",
+        L"Vixy Cam G1",
+        L"Vixy G1",
     };
 
     const std::array<GUID, 2> kLegacySourceClsids =
@@ -325,10 +325,10 @@ namespace
         const DWORD length = GetEnvironmentVariableW(L"ProgramData", programDataPath, ARRAYSIZE(programDataPath));
         if (length == 0 || length >= ARRAYSIZE(programDataPath))
         {
-            return std::filesystem::path(L"C:\\ProgramData") / L"MorphlyG1";
+            return std::filesystem::path(L"C:\\ProgramData") / L"VixyG1";
         }
 
-        return std::filesystem::path(programDataPath) / L"MorphlyG1";
+        return std::filesystem::path(programDataPath) / L"VixyG1";
     }
 
     std::filesystem::path GetLocalBinaryPath(const wchar_t* fileName)
@@ -1280,14 +1280,14 @@ namespace
     {
         std::wcout
             << L"Usage:\n"
-            << L"  morphly_cam_registrar install [--all-users] [--session]\n"
-            << L"  morphly_cam_registrar remove [--all-users] [--session] [--unregister-com]\n"
-            << L"  morphly_cam_registrar probe\n"
-            << L"  morphly_cam_registrar probe-registration\n"
-            << L"  morphly_cam_registrar register | /register\n"
-            << L"  morphly_cam_registrar unregister | /unregister\n"
-            << L"  morphly_cam_registrar com-register\n"
-            << L"  morphly_cam_registrar com-unregister\n";
+            << L"  vixy_cam_registrar install [--all-users] [--session]\n"
+            << L"  vixy_cam_registrar remove [--all-users] [--session] [--unregister-com]\n"
+            << L"  vixy_cam_registrar probe\n"
+            << L"  vixy_cam_registrar probe-registration\n"
+            << L"  vixy_cam_registrar register | /register\n"
+            << L"  vixy_cam_registrar unregister | /unregister\n"
+            << L"  vixy_cam_registrar com-register\n"
+            << L"  vixy_cam_registrar com-unregister\n";
     }
 }
 

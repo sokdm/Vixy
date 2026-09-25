@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
-export const VOICE_ENGINE_ASSET_NAME = 'morphlyvc-runtime-40ms.zip';
+export const VOICE_ENGINE_ASSET_NAME = 'vixyvc-runtime-40ms.zip';
 export const VOICE_ENGINE_MANIFEST_NAME = `${VOICE_ENGINE_ASSET_NAME}.json`;
 export const VOICE_ENGINE_PART_BYTES = 1024 ** 3;
 

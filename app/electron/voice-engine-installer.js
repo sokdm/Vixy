@@ -1,4 +1,4 @@
-import { execFile } from 'child_process';
+﻿import { execFile } from 'child_process';
 import fs from 'fs';
 import fsp from 'fs/promises';
 import https from 'https';
@@ -13,7 +13,7 @@ export const VOICE_ENGINE_DIRECTORY_NAME = 'runtime-40ms';
 
 export function getVoiceEngineReleaseBase(version) {
   if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error('Invalid desktop version for voice engine download.');
-  return `https://github.com/samuellucky2424-afk/morphly/releases/download/v${version}`;
+  return `https://github.com/sokdm/vixy/releases/download/v${version}`;
 }
 
 const DOWNLOAD_TIMEOUT_MS = 30000;

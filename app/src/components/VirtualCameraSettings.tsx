@@ -28,7 +28,7 @@ export function VirtualCameraSettings() {
     <h3 id="virtual-camera-settings-title" className="flex items-center gap-2 text-sm font-semibold"><Camera aria-hidden="true" className="size-4" />Virtual Camera</h3>
     <p className="text-xs leading-5 text-muted-foreground">{available
       ? 'Repair missing camera registration after an installation or update. Stop streaming first. Windows will ask for Administrator approval if repair is needed.'
-      : 'Open Morphly Desktop on Windows to check or repair its virtual camera.'}</p>
+      : 'Open Vixy Desktop on Windows to check or repair its virtual camera.'}</p>
     {status && <p role={status.success ? 'status' : 'alert'} className={`rounded-md border bg-background p-3 text-xs leading-5 ${status.success ? 'border-success/25 text-success' : 'border-destructive/25 text-destructive'}`}>
       {status.success ? status.message : status.error}
     </p>}

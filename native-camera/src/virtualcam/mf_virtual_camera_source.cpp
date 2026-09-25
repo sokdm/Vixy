@@ -65,7 +65,7 @@ namespace morphly::virtualcam
             OutputDebugStringW(wideLine);
 
             HANDLE file = CreateFileW(
-                L"C:\\ProgramData\\MorphlyG1\\mf_source.log",
+                L"C:\\ProgramData\\VixyG1\\mf_source.log",
                 FILE_APPEND_DATA,
                 FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
                 nullptr,
@@ -657,7 +657,7 @@ namespace morphly::virtualcam
                 HRESULT fileBridgeHr = EnsureOpenFileBridgeLocked();
                 if (SUCCEEDED(fileBridgeHr))
                 {
-                    AppendMfVirtualCameraLogLine(L"Using file-backed Morphly camera bridge.");
+                    AppendMfVirtualCameraLogLine(L"Using file-backed Vixy camera bridge.");
                     return S_OK;
                 }
 
@@ -679,7 +679,7 @@ namespace morphly::virtualcam
                     kGlobalPublisherEventName);
                 if (SUCCEEDED(globalHr))
                 {
-                    AppendMfVirtualCameraLogLine(L"Using Global Morphly camera bridge.");
+                    AppendMfVirtualCameraLogLine(L"Using Global Vixy camera bridge.");
                     return S_OK;
                 }
 
@@ -701,7 +701,7 @@ namespace morphly::virtualcam
                     kPublisherMutexName,
                     kPublisherEventName));
 
-                AppendMfVirtualCameraLogLine(L"Using Local Morphly camera bridge.");
+                AppendMfVirtualCameraLogLine(L"Using Local Vixy camera bridge.");
 
                 return S_OK;
             }

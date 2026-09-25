@@ -243,8 +243,8 @@ int wmain()
             receiverStateReported = true;
             receiverConnected = nextReceiverConnected;
             std::cerr << (receiverConnected
-                ? "Connected to the Morphly virtual camera.\n"
-                : "Waiting for an application to open Morphly Virtual Camera.\n");
+                ? "Connected to the Vixy virtual camera.\n"
+                : "Waiting for an application to open Vixy Virtual Camera.\n");
         }
     }
 }

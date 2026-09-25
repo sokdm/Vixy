@@ -16,14 +16,14 @@ contextBridge.exposeInMainWorld('electron', {
       'window:get-full-screen',
       'window:toggle-full-screen',
       'clipboard:write-text',
-      'morphlyvc:status',
-      'morphlyvc:reference',
-      'morphlyvc:prepare',
-      'morphlyvc:start',
-      'morphlyvc:pitch',
-      'morphlyvc:stop',
-      'morphlyvc:engine-status',
-      'morphlyvc:install-engine',
+      'vixyvc:status',
+      'vixyvc:reference',
+      'vixyvc:prepare',
+      'vixyvc:start',
+      'vixyvc:pitch',
+      'vixyvc:stop',
+      'vixyvc:engine-status',
+      'vixyvc:install-engine',
       'virtual-microphone:open-setup',
       'virtual-microphone:install',
       'virtual-microphone:detect'
@@ -38,7 +38,7 @@ contextBridge.exposeInMainWorld('electron', {
       'desktop-updater:state',
       'virtual-camera:receiver-state',
       'window:full-screen-changed',
-      'morphlyvc:install-progress'
+      'vixyvc:install-progress'
     ];
     if (!validChannels.includes(channel) || typeof listener !== 'function') {
       return () => {};

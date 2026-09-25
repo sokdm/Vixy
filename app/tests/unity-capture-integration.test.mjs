@@ -45,7 +45,7 @@ test('the bridge publishes one adaptive frame to DirectShow and Media Foundation
 test('Electron starts the UnityCapture sender with an adaptive latest-frame publisher', () => {
   const mainProcess = readRepositoryFile('app/electron/main.js');
 
-  assert.match(mainProcess, /morphly_unity_capture_sender\.exe/);
+  assert.match(mainProcess, /vixy_unity_capture_sender\.exe/);
   assert.match(mainProcess, /unity-capture-bridge\/build\/Release/);
   assert.match(mainProcess, /selectVirtualCameraProfile\(\)/);
   assert.match(mainProcess, /MORPHLY_DISABLE_HARDWARE_ACCELERATION/);
@@ -63,13 +63,13 @@ test('Electron starts the UnityCapture sender with an adaptive latest-frame publ
   assert.match(mainProcess, /operationGeneration !== virtualCameraOperationGeneration/);
   assert.match(mainProcess, /ensureUnityCaptureRegistration\(\)/);
   assert.match(mainProcess, /ensureMediaFoundationCameraRegistration\(\)/);
-  assert.match(mainProcess, /morphly_cam_registrar\.exe/);
+  assert.match(mainProcess, /vixy_cam_registrar\.exe/);
   assert.match(mainProcess, /media-foundation-camera/);
 });
 
 test('the renderer publishes one decoded-frame path without an extra typed-array copy', () => {
   const dashboard = readRepositoryFile('app/src/pages/Dashboard.tsx');
-  const publisherCalls = dashboard.match(/pushMorphlyCamFrame\(currentCanvas, renderContext\)/g) ?? [];
+  const publisherCalls = dashboard.match(/pushVixyCamFrame\(currentCanvas, renderContext\)/g) ?? [];
 
   assert.match(dashboard, /requestVideoFrameCallback\(renderFrame\)/);
   assert.match(dashboard, /pixels: imageData\.data/);
@@ -103,24 +103,24 @@ test('packaging includes both upstream filters and registers a branded camera', 
 
   assert.match(afterPack, /UnityCaptureFilter32\.dll/);
   assert.match(afterPack, /UnityCaptureFilter64\.dll/);
-  assert.match(afterPack, /morphly_unity_capture_sender\.exe/);
-  assert.match(afterPack, /MorphlyVirtualCameraMF\.dll/);
-  assert.match(afterPack, /morphly_cam_registrar\.exe/);
+  assert.match(afterPack, /vixy_unity_capture_sender\.exe/);
+  assert.match(afterPack, /VixyVirtualCameraMF\.dll/);
+  assert.match(afterPack, /vixy_cam_registrar\.exe/);
   assert.match(afterPack, /media-foundation-camera/);
   assert.match(registrationScript, /VIDEO_INPUT_DEVICE_CATEGORY/);
   assert.match(registrationScript, /normalizeWindowsPath\(registeredFilterPath\) === normalizeWindowsPath\(expectedFilterPath\)/);
-  assert.match(installer, /UnityCaptureName=Morphly Virtual Camera/g);
+  assert.match(installer, /UnityCaptureName=Vixy Virtual Camera/g);
   assert.match(
     registrationScript,
     /\['\/s', `\/i:UnityCaptureName=\$\{CAMERA_NAME\}`, filterPath\]/,
   );
   assert.match(
     installer,
-    /regsvr32\.exe" \/s "\/i:UnityCaptureName=Morphly Virtual Camera" "\$INSTDIR\\resources\\unity-capture\\UnityCaptureFilter32\.dll"/,
+    /regsvr32\.exe" \/s "\/i:UnityCaptureName=Vixy Virtual Camera" "\$INSTDIR\\resources\\unity-capture\\UnityCaptureFilter32\.dll"/,
   );
   assert.match(
     installer,
-    /regsvr32\.exe" \/s "\/i:UnityCaptureName=Morphly Virtual Camera" "\$INSTDIR\\resources\\unity-capture\\UnityCaptureFilter64\.dll"/,
+    /regsvr32\.exe" \/s "\/i:UnityCaptureName=Vixy Virtual Camera" "\$INSTDIR\\resources\\unity-capture\\UnityCaptureFilter64\.dll"/,
   );
   assert.match(installer, /SysWOW64\\regsvr32\.exe/);
   assert.match(installer, /Sysnative\\regsvr32\.exe/);
@@ -132,13 +132,13 @@ test('packaging includes both upstream filters and registers a branded camera', 
   assert.match(installer, /FriendlyName/);
   assert.match(installer, /MB_ICONSTOP\|MB_RETRYCANCEL/);
   assert.match(installer, /SetErrorLevel 1603[\s\S]*Quit/);
-  assert.match(installer, /morphly_cam_registrar\.exe" install --all-users/);
-  assert.match(installer, /morphly_cam_registrar\.exe" probe/);
+  assert.match(installer, /vixy_cam_registrar\.exe" install --all-users/);
+  assert.match(installer, /vixy_cam_registrar\.exe" probe/);
   assert.deepEqual(packageConfig.build.win.target, ['nsis']);
   assert.ok(packageConfig.build.files.includes('shared/**/*'));
   assert.equal(packageConfig.build.nsis.perMachine, true);
   assert.equal(packageConfig.build.nsis.allowElevation, true);
-  assert.match(releaseWorkflow, /Morphly-Setup-\$version\.exe/);
+  assert.match(releaseWorkflow, /Vixy-Setup-\$version\.exe/);
   assert.doesNotMatch(releaseWorkflow, /Missing portable build/);
   assert.match(releaseWorkflow, /run: npm run electron:build/);
   assert.match(releaseWorkflow, /Publish verified release/);
@@ -157,7 +157,7 @@ test('development registration requests elevation once and verifies both camera 
     { status: 0, stdout: 'registered', stderr: '' },
   ];
   const nodeExecutable = 'C:\\Program Files\\nodejs\\node.exe';
-  const registrationScript = "D:\\Morphly's App\\unity-capture-registration.cjs";
+  const registrationScript = "D:\\Vixy's App\\unity-capture-registration.cjs";
 
   const result = ensureRegistration({
     platform: 'win32',
@@ -184,7 +184,7 @@ test('development registration requests elevation once and verifies both camera 
   assert.equal(elevationCommand, buildElevationCommand(nodeExecutable, registrationScript));
   assert.match(elevationCommand, /Start-Process -FilePath/);
   assert.match(elevationCommand, /-Verb RunAs -Wait -PassThru -WindowStyle Hidden/);
-  assert.match(elevationCommand, /Morphly''s App/);
+  assert.match(elevationCommand, /Vixy''s App/);
   assert.deepEqual(calls[2].args, [registrationScript, 'probe']);
 });
 
@@ -234,10 +234,10 @@ test('desktop development builds the native sender before launching Electron', (
   assert.match(mainProcess, /process\.env\.MORPHLY_DESKTOP_DEV === '1'/);
   assert.match(mainProcess, /const isPackagedRuntime = app\.isPackaged && !isDevelopment/);
   assert.match(mainProcess, /if \(isPackagedRuntime\) \{[\s\S]*unity-capture-bridge\/build\/Release/);
-  assert.match(liveDevLauncher, /https:\/\/morphly-alpha\.vercel\.app/);
+  assert.match(liveDevLauncher, /https:\/\/your-domain\.example/);
   assert.match(liveDevLauncher, /Public client configuration: verified \(values hidden\)/);
   assert.match(liveDevLauncher, /spawn\(process\.execPath, \[npmCliPath/);
-  assert.doesNotMatch(liveDevLauncher, /console\.(?:info|log)\([^\n]*(?:supabaseUrl|supabaseAnonKey)/);
+  assert.doesNotMatch(liveDevLauncher, /console\.(?:info|log)\([^\n]*(?:apiKey|token|secret)/);
   assert.match(viteConfig, /const runtimeEnv = \{ \.\.\.env, \.\.\.process\.env \}/);
   assert.match(viteConfig, /runtimeEnv\.VITE_API_PROXY_TARGET/);
 });

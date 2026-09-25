@@ -69,18 +69,18 @@ export default function Sidebar() {
 
       {/* Main Sidebar Element */}
       <aside
-        className={`fixed left-0 top-0 h-screen bg-background border-r border-border transition-transform duration-300 ease-in-out z-50 flex flex-col w-56 shadow-2xl ${
+        className={`fixed left-0 top-0 h-screen bg-card border-r border-border transition-transform duration-300 ease-in-out z-50 flex flex-col w-56 shadow-2xl ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="h-20 flex items-center justify-between px-5 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary flex items-center justify-center shadow-lg shadow-black/5">
+            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-black/30">
               <Video className="w-4 h-4 text-primary-foreground" />
             </div>
             <div>
-              <span className="text-lg font-bold text-foreground tracking-tight">Morphly</span>
-              <p className="text-[10px] text-muted-foreground -mt-0.5 tracking-wide uppercase font-semibold">AI Streaming</p>
+              <span className="text-lg font-bold text-foreground tracking-tight">Vixy</span>
+              <p className="text-[10px] text-muted-foreground -mt-0.5 tracking-wide uppercase font-semibold">AI Camera Studio</p>
             </div>
           </div>
           <button 

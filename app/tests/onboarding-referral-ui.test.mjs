@@ -142,5 +142,5 @@ test('Windows runtime and installer use the Morphly application icon', () => {
   assert.match(packageConfig.scripts['electron:dev:wait'], /launch-branded-electron-dev\.cjs/);
   assert.equal(packageConfig.build.win.icon, 'build/icon.ico');
   assert.equal(packageConfig.build.win.signAndEditExecutable, true);
-  assert.equal(packageConfig.build.nsis.shortcutName, 'Morphly Desktop');
+  assert.equal(packageConfig.build.nsis.shortcutName, 'Vixy Desktop');
 });

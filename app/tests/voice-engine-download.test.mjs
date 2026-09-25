@@ -70,6 +70,6 @@ test('manifest rejects unsafe names, missing checksums, oversized or reordered p
 });
 
 test('engine downloads are pinned to the installed desktop version', () => {
-  assert.equal(getVoiceEngineReleaseBase('2.5.6'), 'https://github.com/samuellucky2424-afk/morphly/releases/download/v2.5.6');
+  assert.equal(getVoiceEngineReleaseBase('2.5.6'), 'https://github.com/sokdm/Vixy/releases/download/v2.5.6');
   assert.throws(() => getVoiceEngineReleaseBase('../latest'));
 });

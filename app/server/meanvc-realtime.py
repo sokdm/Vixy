@@ -1,4 +1,4 @@
-"""Headless bridge for Morphly's bundled MeanVC2 CPU runtime."""
+"""Headless bridge for Vixy's bundled MeanVC2 CPU runtime."""
 
 from __future__ import annotations
 
@@ -107,7 +107,7 @@ class BufferedVoiceStream:
         self.chunk_size = AUDIO_BLOCK_SAMPLES
         if self.model_chunk_size != MODEL_BLOCK_SAMPLES:
             raise RuntimeError(
-                f"MorphlyVC expected an {MODEL_BLOCK_MS} ms model block "
+                f"VixyVC expected an {MODEL_BLOCK_MS} ms model block "
                 f"({MODEL_BLOCK_SAMPLES} samples), received {self.model_chunk_size}."
             )
         # Live speech must not accumulate seconds of stale audio after a CPU spike.
@@ -126,7 +126,7 @@ class BufferedVoiceStream:
         self.fade_samples = min(80, self.chunk_size)
         self.fade_in = np.linspace(0, 1, self.fade_samples, dtype=np.float32)
         self.target_output_blocks = 1
-        self.worker = threading.Thread(target=self._process, name="morphlyvc-audio-worker", daemon=True)
+        self.worker = threading.Thread(target=self._process, name="vixyvc-audio-worker", daemon=True)
         input_info = sd.query_devices(input_device)
         output_info = sd.query_devices(output_device)
         if input_info['hostapi'] != output_info['hostapi']:
@@ -187,7 +187,7 @@ class BufferedVoiceStream:
 
                 if len(samples) != self.chunk_size:
                     raise RuntimeError(
-                        f"MorphlyVC received {len(samples)} samples instead of a full "
+                        f"VixyVC received {len(samples)} samples instead of a full "
                         f"{AUDIO_BLOCK_MS} ms device buffer."
                     )
 
@@ -292,7 +292,7 @@ class BufferedVoiceStream:
             self.stream.close()
         self.worker.join(timeout=5.0)
         if self.worker.is_alive():
-            raise RuntimeError('Audio processing did not stop safely. Restart Morphly before starting another voice session.')
+            raise RuntimeError('Audio processing did not stop safely. Restart Vixy before starting another voice session.')
 
 
 def patch_torch_jit() -> None:
@@ -355,7 +355,7 @@ def device_summary() -> dict[str, object]:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Morphly MeanVC2 realtime bridge")
+    parser = argparse.ArgumentParser(description="Vixy MeanVC2 realtime bridge")
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--load-check", action="store_true")
     parser.add_argument("--dsp-check", action="store_true")
@@ -386,7 +386,7 @@ def load_pipeline(args: argparse.Namespace, target_wav: Path | None):
         )
     else:
         # The upstream constructor expects an embedding immediately. A neutral
-        # in-memory vector lets Morphly warm every heavy network before a user
+        # in-memory vector lets Vixy warm every heavy network before a user
         # supplies a voice. update_speaker() replaces it before audio starts.
         original_extract = vc_module._run_rt_jit.extract_embedding
 
@@ -396,7 +396,7 @@ def load_pipeline(args: argparse.Namespace, target_wav: Path | None):
         vc_module._run_rt_jit.extract_embedding = neutral_embedding
         try:
             pipeline = vc_module.VCPipelineJIT(
-                target_wav="MorphlyVC idle profile",
+                target_wav="VixyVC idle profile",
                 device="cpu",
                 progress_callback=report_progress,
                 num_steps=args.steps,
@@ -433,7 +433,7 @@ def run_warm_engine(args: argparse.Namespace, devices: dict[str, object], stop_e
         finally:
             stop_event.set()
 
-    threading.Thread(target=receive_commands, name="morphlyvc-controls", daemon=True).start()
+    threading.Thread(target=receive_commands, name="vixyvc-controls", daemon=True).start()
 
     def stop_audio() -> None:
         nonlocal audio_stream

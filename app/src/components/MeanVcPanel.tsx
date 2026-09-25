@@ -123,7 +123,7 @@ type ReadinessItem = {
 async function readApiResponse<T>(response: Response): Promise<T> {
   const data = await response.json() as T & ApiError;
   if (!response.ok) {
-    throw new Error(data.error || `MorphlyVC request failed (${response.status}).`);
+    throw new Error(data.error || `VixyVC request failed (${response.status}).`);
   }
   return data;
 }
@@ -146,25 +146,25 @@ function usesPackagedVoiceBridge() {
 async function requestMorphlyVc<T>(action: MorphlyVcAction, payload?: Record<string, unknown> | File): Promise<T> {
   if (usesPackagedVoiceBridge()) {
     if (!window.electron) {
-      throw new Error('The MorphlyVC desktop bridge is unavailable.');
+      throw new Error('The VixyVC desktop bridge is unavailable.');
     }
 
     if (action === 'reference') {
       if (!(payload instanceof File)) {
         throw new Error('Choose a valid WAV reference recording.');
       }
-      return window.electron.invoke('morphlyvc:reference', {
+      return window.electron.invoke('vixyvc:reference', {
         data: new Uint8Array(await payload.arrayBuffer()),
         fileName: payload.name,
       }) as Promise<T>;
     }
 
-    return window.electron.invoke(`morphlyvc:${action}`, payload ?? {}) as Promise<T>;
+    return window.electron.invoke(`vixyvc:${action}`, payload ?? {}) as Promise<T>;
   }
 
   const route = MORPHLY_VC_ROUTES[action];
   if (!['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)) {
-    throw new Error('MorphlyVC runs locally. Open Morphly Desktop to use voice conversion.');
+    throw new Error('VixyVC runs locally. Open Vixy Desktop to use voice conversion.');
   }
   const headers: Record<string, string> = {};
   let body: BodyInit | undefined;
@@ -271,7 +271,7 @@ export function MeanVcPanel() {
       setStatus(nextStatus);
       setError(null);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Unable to reach the local MorphlyVC service.');
+      setError(requestError instanceof Error ? requestError.message : 'Unable to reach the local VixyVC service.');
     }
   }, []);
 
@@ -323,7 +323,7 @@ export function MeanVcPanel() {
 
     const loadEngineStatus = async () => {
       try {
-        const result = await bridge.invoke('morphlyvc:engine-status') as {
+        const result = await bridge.invoke('vixyvc:engine-status') as {
           installed?: boolean;
           available?: boolean;
         };
@@ -341,7 +341,7 @@ export function MeanVcPanel() {
 
     void loadEngineStatus();
 
-    const unsubscribe = bridge.on('morphlyvc:install-progress', (progress) => {
+    const unsubscribe = bridge.on('vixyvc:install-progress', (progress) => {
       setVoiceEngine((current) => ({
         ...current,
         phase: progress?.phase ?? current.phase,
@@ -366,7 +366,7 @@ export function MeanVcPanel() {
     setVoiceEngine((current) => ({ ...current, phase: 'downloading', percent: 0, error: null }));
 
     try {
-      const result = await bridge.invoke('morphlyvc:install-engine') as {
+      const result = await bridge.invoke('vixyvc:install-engine') as {
         success?: boolean;
         cancelled?: boolean;
         error?: string;
@@ -421,7 +421,7 @@ export function MeanVcPanel() {
   const readinessItems: ReadinessItem[] = [
     {
       label: 'Model memory',
-      detail: status?.preload?.engineMessage || 'Starting the local MorphlyVC engine',
+      detail: status?.preload?.engineMessage || 'Starting the local VixyVC engine',
       ready: bundledEngineReady,
     },
     {
@@ -445,7 +445,7 @@ export function MeanVcPanel() {
   const startRequirement = standaloneStatus?.installing
     ? `Installing the local voice engine — ${standaloneStatus.progress}% complete.`
     : engineWarming
-      ? 'MorphlyVC is warming up. Your microphone remains off.'
+      ? 'VixyVC is warming up. Your microphone remains off.'
     : !runtimeReady
       ? 'The local voice engine must finish setup before it can start.'
     : !referenceFile
@@ -547,7 +547,7 @@ export function MeanVcPanel() {
         outputDevice,
       }));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Unable to start MorphlyVC.');
+      setError(requestError instanceof Error ? requestError.message : 'Unable to start VixyVC.');
     } finally {
       setIsBusy(false);
     }
@@ -573,7 +573,7 @@ export function MeanVcPanel() {
     try {
       setStatus(await requestMorphlyVc<MeanVcStatus>('stop'));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Unable to stop MorphlyVC.');
+      setError(requestError instanceof Error ? requestError.message : 'Unable to stop VixyVC.');
     } finally {
       setIsBusy(false);
     }
@@ -635,7 +635,7 @@ export function MeanVcPanel() {
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="truncate text-sm font-semibold tracking-[-0.01em] text-foreground">MorphlyVC</h2>
+              <h2 className="truncate text-sm font-semibold tracking-[-0.01em] text-foreground">VixyVC</h2>
             </div>
             <p className="mt-0.5 truncate text-[11px] text-muted-foreground">Live voice processing</p>
           </div>
@@ -657,8 +657,8 @@ export function MeanVcPanel() {
             variant="ghost"
             size="icon"
             onClick={() => void refreshStatus()}
-            title="Refresh MorphlyVC status"
-            aria-label="Refresh MorphlyVC status"
+            title="Refresh VixyVC status"
+            aria-label="Refresh VixyVC status"
             className="size-8 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring/50"
           >
             <RefreshCw aria-hidden="true" className="size-4" />
@@ -992,7 +992,7 @@ export function MeanVcPanel() {
                 </div>
 
                 {status?.runtime.logs.length ? (
-                  <div className="mx-4 mb-3 rounded border border-border bg-background p-2.5" role="log" aria-label="MorphlyVC runtime log">
+                  <div className="mx-4 mb-3 rounded border border-border bg-background p-2.5" role="log" aria-label="VixyVC runtime log">
                     {status.runtime.logs.slice(-4).map((entry) => (
                       <p key={`${entry.timestamp}-${entry.message}`} className="truncate font-mono text-[10px] leading-5 text-muted-foreground" title={entry.message}>
                         {entry.message}
@@ -1005,7 +1005,7 @@ export function MeanVcPanel() {
           </Collapsible>
 
           <div className="flex items-center justify-between px-4 py-3 text-[10px] text-muted-foreground">
-            <span className="flex items-center gap-1.5"><Cpu aria-hidden="true" className="size-3" />MorphlyVC CPU · 160 ms</span>
+            <span className="flex items-center gap-1.5"><Cpu aria-hidden="true" className="size-3" />VixyVC CPU · 160 ms</span>
             <span>Apache-2.0</span>
           </div>
         </div>

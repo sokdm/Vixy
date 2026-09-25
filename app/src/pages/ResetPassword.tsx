@@ -4,7 +4,6 @@ import { Eye, EyeOff, Loader2, ShieldCheck, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { createPasswordRecoveryClient } from '@/lib/supabase';
 import { normalizeEmail } from '@/lib/auth-flow';
 import { CODE_SENT_MESSAGE, createPasswordResetFlow } from '@/lib/password-reset';
 
@@ -12,7 +11,7 @@ type Step = 'email' | 'code' | 'password' | 'done';
 
 export default function ResetPassword() {
   const location = useLocation();
-  const [flow] = useState(() => createPasswordResetFlow(createPasswordRecoveryClient().auth));
+  const [flow] = useState(() => createPasswordResetFlow());
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState(() => typeof location.state?.email === 'string' ? location.state.email : '');
   const [code, setCode] = useState('');
@@ -75,14 +74,14 @@ export default function ResetPassword() {
       <div className="w-full max-w-[400px]">
         <div className="flex items-center justify-center gap-3 mb-8">
           <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center"><Video aria-hidden="true" className="w-5 h-5 text-primary-foreground" /></div>
-          <span className="text-xl font-semibold tracking-tight">Morphly</span>
+          <span className="text-xl font-semibold tracking-tight">Vixy</span>
         </div>
         <Card className="bg-background border-border">
           <CardHeader className="space-y-3">
             <p className="text-xs text-muted-foreground text-center">{step === 'done' ? 'Account recovery complete' : `Step ${step === 'email' ? 1 : step === 'code' ? 2 : 3} of 3`}</p>
             <CardTitle className="text-xl text-center"><h1>{titles[step]}</h1></CardTitle>
             <p className="text-sm text-muted-foreground text-center break-words">
-              {step === 'email' ? 'Enter your account email to receive a one-time reset code.' : step === 'code' ? `Enter the code sent to ${email}. You can complete this here in the app or in your browser.` : step === 'password' ? 'Use at least eight characters. Your account and credits stay the same.' : 'You can now return to Morphly.'}
+              {step === 'email' ? 'Enter your account email to receive a one-time reset code.' : step === 'code' ? `Enter the code sent to ${email}. You can complete this here in the app or in your browser.` : step === 'password' ? 'Use at least eight characters. Your account and credits stay the same.' : 'You can now return to Vixy.'}
             </p>
           </CardHeader>
           <CardContent>

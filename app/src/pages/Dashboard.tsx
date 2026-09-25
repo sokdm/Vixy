@@ -187,9 +187,9 @@ const DEFAULT_VIRTUAL_CAMERA_PROFILE: VirtualCameraProfile = {
   height: 360,
   frameRate: 24,
 };
-const MORPHLY_CAM_POPUP_WIDTH = 640;
-const MORPHLY_CAM_POPUP_HEIGHT = 360;
-const MORPHLY_CAM_POPUP_FRAME_INTERVAL_MS = 1000 / 24;
+const VIXY_CAM_POPUP_WIDTH = 640;
+const VIXY_CAM_POPUP_HEIGHT = 360;
+const VIXY_CAM_POPUP_FRAME_INTERVAL_MS = 1000 / 24;
 const SELECTED_CAMERA_STORAGE_PREFIX = 'morphly:selected-physical-camera';
 
 function buildProviderVideoTrackConstraints(
@@ -809,7 +809,7 @@ function Dashboard() {
     }
   }, []);
 
-  const resetMorphlyCamRefs = useCallback(() => {
+  const resetVixyCamRefs = useCallback(() => {
     if (morphlyCamWindowRef.current && morphlyCamRenderHandleRef.current !== null) {
       morphlyCamWindowRef.current.cancelAnimationFrame(morphlyCamRenderHandleRef.current);
     }
@@ -824,7 +824,7 @@ function Dashboard() {
     morphlyCamWindowEnabledRef.current = false;
   }, []);
 
-  const updateMorphlyCamPlaceholder = useCallback((message: string | null) => {
+  const updateVixyCamPlaceholder = useCallback((message: string | null) => {
     const placeholder = morphlyCamPlaceholderRef.current;
 
     if (!placeholder) {
@@ -842,19 +842,19 @@ function Dashboard() {
     placeholder.style.pointerEvents = 'auto';
   }, []);
 
-  const getMorphlyCamGuideMessage = useCallback((hasLiveVideo: boolean) => {
+  const getVixyCamGuideMessage = useCallback((hasLiveVideo: boolean) => {
     if (hasLiveVideo) {
       return 'Capture this window in SplitCam or OBS. If you need a webcam device, route it through SplitCam or OBS Virtual Camera.';
     }
 
     if (isStreamingRef.current) {
-      return 'Waiting for Morphly video. Keep this window selected in SplitCam or OBS Window Capture.';
+      return 'Waiting for Vixy video. Keep this window selected in SplitCam or OBS Window Capture.';
     }
 
-    return 'Start Morphly first, then capture this window in SplitCam or OBS. This window is not a standalone webcam device.';
+    return 'Start Vixy first, then capture this window in SplitCam or OBS. This window is not a standalone webcam device.';
   }, []);
 
-  const updateMorphlyCamStatus = useCallback((message: string | null) => {
+  const updateVixyCamStatus = useCallback((message: string | null) => {
     const status = morphlyCamStatusRef.current;
 
     if (!status) {
@@ -871,7 +871,7 @@ function Dashboard() {
     status.style.opacity = '1';
   }, []);
 
-  const stopMorphlyCamRenderLoop = useCallback(() => {
+  const stopVixyCamRenderLoop = useCallback(() => {
     const popup = morphlyCamWindowRef.current;
     if (popup && morphlyCamRenderHandleRef.current !== null) {
       popup.cancelAnimationFrame(morphlyCamRenderHandleRef.current);
@@ -894,7 +894,7 @@ function Dashboard() {
     mainVirtualCamUsesVideoFrameCallbackRef.current = false;
   }, []);
 
-  const pushMorphlyCamFrame = useCallback((canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) => {
+  const pushVixyCamFrame = useCallback((canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) => {
     if (!window.electron?.sendVirtualCameraFrame) {
       return;
     }
@@ -908,7 +908,7 @@ function Dashboard() {
     });
   }, []);
 
-  const startMorphlyCamRenderLoop = useCallback(() => {
+  const startVixyCamRenderLoop = useCallback(() => {
     const popup = morphlyCamWindowRef.current;
     const video = morphlyCamVideoRef.current;
     const canvas = morphlyCamCanvasRef.current;
@@ -917,7 +917,7 @@ function Dashboard() {
       return;
     }
 
-    stopMorphlyCamRenderLoop();
+    stopVixyCamRenderLoop();
     morphlyCamLastFrameSentAtRef.current = 0;
 
     const context = canvas.getContext('2d', {
@@ -941,7 +941,7 @@ function Dashboard() {
 
       if (currentVideo.readyState >= 2 && currentVideo.videoWidth > 0 && currentVideo.videoHeight > 0) {
         const now = currentPopup.performance?.now?.() ?? performance.now();
-        if ((now - morphlyCamLastFrameSentAtRef.current) >= MORPHLY_CAM_POPUP_FRAME_INTERVAL_MS) {
+        if ((now - morphlyCamLastFrameSentAtRef.current) >= VIXY_CAM_POPUP_FRAME_INTERVAL_MS) {
           context.fillStyle = '#000000';
           context.fillRect(0, 0, currentCanvas.width, currentCanvas.height);
           drawVideoFrameCover(context, currentVideo, currentCanvas.width, currentCanvas.height);
@@ -953,7 +953,7 @@ function Dashboard() {
     };
 
     morphlyCamRenderHandleRef.current = popup.requestAnimationFrame(renderFrame);
-  }, [stopMorphlyCamRenderLoop]);
+  }, [stopVixyCamRenderLoop]);
 
   const startMainVirtualCamRenderLoop = useCallback(() => {
     if (!morphlyCamWindowEnabledRef.current) {
@@ -1045,7 +1045,7 @@ function Dashboard() {
             currentCanvas.width,
             currentCanvas.height,
           );
-          pushMorphlyCamFrame(currentCanvas, renderContext);
+          pushVixyCamFrame(currentCanvas, renderContext);
           mainVirtualCamLastFrameSentAtRef.current = nextFrameClock;
         }
       }
@@ -1054,9 +1054,9 @@ function Dashboard() {
     }
 
     scheduleNextFrame();
-  }, [pushMorphlyCamFrame, stopMainVirtualCamRenderLoop]);
+  }, [pushVixyCamFrame, stopMainVirtualCamRenderLoop]);
 
-  const renderMorphlyCamWindowShell = useCallback((popup: Window) => {
+  const renderVixyCamWindowShell = useCallback((popup: Window) => {
     const doc = popup.document;
 
     doc.open();
@@ -1066,7 +1066,7 @@ function Dashboard() {
         <head>
           <meta charset="UTF-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <title>Morphly cam</title>
+          <title>Vixy cam</title>
           <style>
             html, body {
               width: 100%;
@@ -1083,21 +1083,21 @@ function Dashboard() {
               justify-content: center;
             }
 
-            #morphly-cam-root {
+            #vixy-cam-root {
               position: relative;
               width: 100vw;
               height: 100vh;
               background: #fff;
             }
 
-            #morphly-cam-output {
+            #vixy-cam-output {
               width: 100%;
               height: 100%;
               object-fit: contain;
               background: #fff;
             }
 
-            #morphly-cam-video {
+            #vixy-cam-video {
               position: absolute;
               width: 1px;
               height: 1px;
@@ -1105,7 +1105,7 @@ function Dashboard() {
               pointer-events: none;
             }
 
-            #morphly-cam-placeholder {
+            #vixy-cam-placeholder {
               position: absolute;
               inset: 0;
               display: flex;
@@ -1121,7 +1121,7 @@ function Dashboard() {
               transition: opacity 180ms ease;
             }
 
-            #morphly-cam-status {
+            #vixy-cam-status {
               position: absolute;
               left: 50%;
               bottom: 24px;
@@ -1139,42 +1139,42 @@ function Dashboard() {
           </style>
         </head>
         <body>
-          <div id="morphly-cam-root">
-            <canvas id="morphly-cam-output" width="${MORPHLY_CAM_POPUP_WIDTH}" height="${MORPHLY_CAM_POPUP_HEIGHT}"></canvas>
-            <video id="morphly-cam-video" autoplay playsinline muted></video>
-            <div id="morphly-cam-placeholder">
-              Start Morphly first, then capture this window in SplitCam or OBS. This window is not a standalone webcam device.
+          <div id="vixy-cam-root">
+            <canvas id="vixy-cam-output" width="${VIXY_CAM_POPUP_WIDTH}" height="${VIXY_CAM_POPUP_HEIGHT}"></canvas>
+            <video id="vixy-cam-video" autoplay playsinline muted></video>
+            <div id="vixy-cam-placeholder">
+              Start Vixy first, then capture this window in SplitCam or OBS. This window is not a standalone webcam device.
             </div>
-            <div id="morphly-cam-status">Connecting Morphly cam...</div>
+            <div id="vixy-cam-status">Connecting Vixy cam...</div>
           </div>
         </body>
       </html>
     `);
     doc.close();
-    doc.title = 'Morphly cam';
+    doc.title = 'Vixy cam';
 
-    morphlyCamCanvasRef.current = doc.getElementById('morphly-cam-output') as HTMLCanvasElement | null;
-    morphlyCamVideoRef.current = doc.getElementById('morphly-cam-video') as HTMLVideoElement | null;
-    morphlyCamStatusRef.current = doc.getElementById('morphly-cam-status') as HTMLDivElement | null;
-    morphlyCamPlaceholderRef.current = doc.getElementById('morphly-cam-placeholder') as HTMLDivElement | null;
+    morphlyCamCanvasRef.current = doc.getElementById('vixy-cam-output') as HTMLCanvasElement | null;
+    morphlyCamVideoRef.current = doc.getElementById('vixy-cam-video') as HTMLVideoElement | null;
+    morphlyCamStatusRef.current = doc.getElementById('vixy-cam-status') as HTMLDivElement | null;
+    morphlyCamPlaceholderRef.current = doc.getElementById('vixy-cam-placeholder') as HTMLDivElement | null;
 
     if (latestRemoteStreamRef.current && morphlyCamVideoRef.current) {
       morphlyCamVideoRef.current.srcObject = latestRemoteStreamRef.current;
       void morphlyCamVideoRef.current.play().catch(() => {});
-      startMorphlyCamRenderLoop();
-      updateMorphlyCamStatus(null);
-      updateMorphlyCamPlaceholder(null);
+      startVixyCamRenderLoop();
+      updateVixyCamStatus(null);
+      updateVixyCamPlaceholder(null);
     } else {
-      updateMorphlyCamPlaceholder(getMorphlyCamGuideMessage(false));
+      updateVixyCamPlaceholder(getVixyCamGuideMessage(false));
     }
 
     popup.onbeforeunload = () => {
-      stopMorphlyCamRenderLoop();
-      resetMorphlyCamRefs();
+      stopVixyCamRenderLoop();
+      resetVixyCamRefs();
     };
-  }, [getMorphlyCamGuideMessage, resetMorphlyCamRefs, startMorphlyCamRenderLoop, stopMorphlyCamRenderLoop, updateMorphlyCamPlaceholder, updateMorphlyCamStatus]);
+  }, [getVixyCamGuideMessage, resetVixyCamRefs, startVixyCamRenderLoop, stopVixyCamRenderLoop, updateVixyCamPlaceholder, updateVixyCamStatus]);
 
-  const ensureMorphlyCamWindow = useCallback((statusMessage: string) => {
+  const ensureVixyCamWindow = useCallback((statusMessage: string) => {
     if (typeof window === 'undefined') {
       return null;
     }
@@ -1185,25 +1185,25 @@ function Dashboard() {
     }
 
     if (popup.closed) {
-      resetMorphlyCamRefs();
+      resetVixyCamRefs();
       return null;
     }
 
-    if (!popup.document.getElementById('morphly-cam-output') || !popup.document.getElementById('morphly-cam-video')) {
-      renderMorphlyCamWindowShell(popup);
+    if (!popup.document.getElementById('vixy-cam-output') || !popup.document.getElementById('vixy-cam-video')) {
+      renderVixyCamWindowShell(popup);
     }
 
-    popup.document.title = 'Morphly cam';
-    updateMorphlyCamStatus(statusMessage);
+    popup.document.title = 'Vixy cam';
+    updateVixyCamStatus(statusMessage);
 
     if (!latestRemoteStreamRef.current) {
-      updateMorphlyCamPlaceholder(getMorphlyCamGuideMessage(false));
+      updateVixyCamPlaceholder(getVixyCamGuideMessage(false));
     }
 
     return popup;
-  }, [getMorphlyCamGuideMessage, renderMorphlyCamWindowShell, resetMorphlyCamRefs, updateMorphlyCamPlaceholder, updateMorphlyCamStatus]);
+  }, [getVixyCamGuideMessage, renderVixyCamWindowShell, resetVixyCamRefs, updateVixyCamPlaceholder, updateVixyCamStatus]);
 
-  const syncMorphlyCamStream = useCallback((stream: MediaStream, statusMessage?: string | null) => {
+  const syncVixyCamStream = useCallback((stream: MediaStream, statusMessage?: string | null) => {
     latestRemoteStreamRef.current = stream;
 
     if (!morphlyCamWindowEnabledRef.current) {
@@ -1212,7 +1212,7 @@ function Dashboard() {
 
     startMainVirtualCamRenderLoop();
 
-    const popup = ensureMorphlyCamWindow(statusMessage ?? 'Preparing Morphly cam...');
+    const popup = ensureVixyCamWindow(statusMessage ?? 'Preparing Vixy cam...');
     if (!popup || popup.closed) {
       return;
     }
@@ -1229,25 +1229,25 @@ function Dashboard() {
     popupVideo.playbackRate = 1;
     popupVideo.onloadedmetadata = () => {
       void popupVideo.play().catch(() => {});
-      startMorphlyCamRenderLoop();
-      updateMorphlyCamStatus(null);
-      updateMorphlyCamPlaceholder(null);
+      startVixyCamRenderLoop();
+      updateVixyCamStatus(null);
+      updateVixyCamPlaceholder(null);
     };
 
     if (popupVideo.readyState >= 2) {
       void popupVideo.play().catch(() => {});
-      startMorphlyCamRenderLoop();
-      updateMorphlyCamStatus(null);
-      updateMorphlyCamPlaceholder(null);
+      startVixyCamRenderLoop();
+      updateVixyCamStatus(null);
+      updateVixyCamPlaceholder(null);
     }
-  }, [ensureMorphlyCamWindow, startMainVirtualCamRenderLoop, startMorphlyCamRenderLoop, updateMorphlyCamPlaceholder, updateMorphlyCamStatus]);
+  }, [ensureVixyCamWindow, startMainVirtualCamRenderLoop, startVixyCamRenderLoop, updateVixyCamPlaceholder, updateVixyCamStatus]);
 
-  const closeMorphlyCamWindow = useCallback((options?: { clearStream?: boolean }) => {
+  const closeVixyCamWindow = useCallback((options?: { clearStream?: boolean }) => {
     if (options?.clearStream) {
       latestRemoteStreamRef.current = null;
     }
 
-    stopMorphlyCamRenderLoop();
+    stopVixyCamRenderLoop();
     stopMainVirtualCamRenderLoop();
 
     if (morphlyCamVideoRef.current) {
@@ -1259,8 +1259,8 @@ function Dashboard() {
       popup.close();
     }
 
-    resetMorphlyCamRefs();
-  }, [resetMorphlyCamRefs, stopMainVirtualCamRenderLoop, stopMorphlyCamRenderLoop]);
+    resetVixyCamRefs();
+  }, [resetVixyCamRefs, stopMainVirtualCamRenderLoop, stopVixyCamRenderLoop]);
 
   const clearSoftReconnectTimer = useCallback(() => {
     if (softReconnectTimerRef.current) {
@@ -1369,10 +1369,10 @@ function Dashboard() {
 
     if (options?.skipStateUpdate) {
       latestRemoteStreamRef.current = null;
-      updateMorphlyCamStatus('Reconnecting Morphly cam...');
-      updateMorphlyCamPlaceholder(getMorphlyCamGuideMessage(false));
+      updateVixyCamStatus('Reconnecting Vixy cam...');
+      updateVixyCamPlaceholder(getVixyCamGuideMessage(false));
     } else {
-      closeMorphlyCamWindow();
+      closeVixyCamWindow();
     }
 
     lastAppliedTransformRef.current = null;
@@ -1384,10 +1384,10 @@ function Dashboard() {
     cancelRemoteFrameMonitor,
     clearFrameWatchdog,
     clearSoftReconnectTimer,
-    closeMorphlyCamWindow,
-    getMorphlyCamGuideMessage,
-    updateMorphlyCamPlaceholder,
-    updateMorphlyCamStatus,
+    closeVixyCamWindow,
+    getVixyCamGuideMessage,
+    updateVixyCamPlaceholder,
+    updateVixyCamStatus,
   ]);
 
   const getDesiredTransformState = useCallback((): TransformState => ({
@@ -1538,7 +1538,7 @@ function Dashboard() {
               title: 'Camera unavailable',
               message: isNotReadable
                 ? 'Your camera or microphone is already in use by another application. Close it, then try again.'
-                : 'Morphly could not access your camera or microphone. Check device permissions, then try again.',
+                : 'Vixy could not access your camera or microphone. Check device permissions, then try again.',
               canRetry: true,
             });
           }
@@ -1580,7 +1580,7 @@ function Dashboard() {
       lastAppliedTransformRef.current = nextTransform;
     } catch (error) {
       console.error('Failed to sync live transformation:', error);
-      const fallback = 'Morphly could not apply that live update. The previous style is still active.';
+      const fallback = 'Vixy could not apply that live update. The previous style is still active.';
       setDashboardError({
         title: 'Update not applied',
         message: (sessionProviderRef.current === VIDU_REALTIME_PROVIDER || (sessionProviderRef.current as string) === 'decart')
@@ -1672,8 +1672,8 @@ function Dashboard() {
       setUiStatus(options?.isRecovery ? 'Reconnecting Plus...' : 'Connecting to Plus...');
 
       if (morphlyCamWindowEnabledRef.current && morphlyCamWindowRef.current && !morphlyCamWindowRef.current.closed) {
-        updateMorphlyCamStatus(options?.isRecovery ? 'Reconnecting Morphly cam...' : 'Connecting Morphly cam...');
-        updateMorphlyCamPlaceholder(getMorphlyCamGuideMessage(false));
+        updateVixyCamStatus(options?.isRecovery ? 'Reconnecting Vixy cam...' : 'Connecting Vixy cam...');
+        updateVixyCamPlaceholder(getVixyCamGuideMessage(false));
       }
 
       const {
@@ -1756,9 +1756,9 @@ function Dashboard() {
           video.onloadedmetadata = playRemote;
           playRemote();
 
-          syncMorphlyCamStream(
+          syncVixyCamStream(
             editedStream,
-            options?.isRecovery ? 'Reconnecting Morphly cam...' : 'Connecting Morphly cam...',
+            options?.isRecovery ? 'Reconnecting Vixy cam...' : 'Connecting Vixy cam...',
           );
         },
         onRemoteVideoFirstFrame: (info) => {
@@ -1869,12 +1869,12 @@ function Dashboard() {
   }, [
     cancelRemoteFrameMonitor,
     flushBillableUsage,
-    getMorphlyCamGuideMessage,
+    getVixyCamGuideMessage,
     markRemoteFrameFresh,
-    syncMorphlyCamStream,
+    syncVixyCamStream,
     startRemoteFrameMonitor,
-    updateMorphlyCamPlaceholder,
-    updateMorphlyCamStatus,
+    updateVixyCamPlaceholder,
+    updateVixyCamStatus,
   ]);
 
   const connectToVidu = useCallback(async (
@@ -1938,8 +1938,8 @@ function Dashboard() {
       setUiStatus(options?.isRecovery ? 'Reconnecting Pro...' : 'Connecting to Pro...');
 
       if (morphlyCamWindowEnabledRef.current && morphlyCamWindowRef.current && !morphlyCamWindowRef.current.closed) {
-        updateMorphlyCamStatus(options?.isRecovery ? 'Reconnecting Morphly cam...' : 'Connecting Morphly cam...');
-        updateMorphlyCamPlaceholder(getMorphlyCamGuideMessage(false));
+        updateVixyCamStatus(options?.isRecovery ? 'Reconnecting Vixy cam...' : 'Connecting Vixy cam...');
+        updateVixyCamPlaceholder(getVixyCamGuideMessage(false));
       }
 
       const { createViduClient, models } = await import('@/lib/vidu-realtime');
@@ -2036,9 +2036,9 @@ function Dashboard() {
           video.onloadedmetadata = playRemote;
           playRemote();
 
-          syncMorphlyCamStream(
+          syncVixyCamStream(
             editedStream,
-            options?.isRecovery ? 'Reconnecting Morphly cam...' : 'Connecting Morphly cam...',
+            options?.isRecovery ? 'Reconnecting Vixy cam...' : 'Connecting Vixy cam...',
           );
         },
       });
@@ -2117,12 +2117,12 @@ function Dashboard() {
   }, [
     cancelRemoteFrameMonitor,
     flushBillableUsage,
-    getMorphlyCamGuideMessage,
+    getVixyCamGuideMessage,
     markRemoteFrameFresh,
-    syncMorphlyCamStream,
+    syncVixyCamStream,
     startRemoteFrameMonitor,
-    updateMorphlyCamPlaceholder,
-    updateMorphlyCamStatus,
+    updateVixyCamPlaceholder,
+    updateVixyCamStatus,
   ]);
   const connectToDecart = useCallback((...args: Parameters<typeof connectToVidu>) => connectToVidu(...args), [connectToVidu]);
   void connectToDecart;
@@ -2234,7 +2234,7 @@ function Dashboard() {
         // error instead of an endless "Reconnecting..." loop.
         setDashboardError({
           title: `${recoveryProviderLabel} connection lost`,
-          message: `Morphly could not restore the ${recoveryProviderLabel} connection. Check your internet connection, then start the stream again.`,
+          message: `Vixy could not restore the ${recoveryProviderLabel} connection. Check your internet connection, then start the stream again.`,
           canRetry: true,
         });
         void handleStopRef.current?.({ silent: true });
@@ -2503,11 +2503,11 @@ function Dashboard() {
     clearSoftReconnectTimer();
     clearFrameWatchdog();
     cancelRemoteFrameMonitor();
-    closeMorphlyCamWindow({ clearStream: true });
+    closeVixyCamWindow({ clearStream: true });
     void realtimeClientRef.current?.disconnect();
     webcamStreamRef.current?.getTracks().forEach((track) => track.stop());
     webcamSourceStreamRef.current?.getTracks().forEach((track) => track.stop());
-  }, [cancelRemoteFrameMonitor, clearFrameWatchdog, clearGenerationMeterInterval, clearSoftReconnectTimer, clearUsageFlushInterval, closeMorphlyCamWindow]);
+  }, [cancelRemoteFrameMonitor, clearFrameWatchdog, clearGenerationMeterInterval, clearSoftReconnectTimer, clearUsageFlushInterval, closeVixyCamWindow]);
 
   useEffect(() => {
     if (!navigator.mediaDevices) return undefined;
@@ -2696,7 +2696,7 @@ function Dashboard() {
     if (!selectedProvider) return 'Choose an engine before streaming.';
     if (!selectedCameraId) return 'Select your physical laptop camera first.';
     if (selectedDeviceIsVirtual) {
-      return 'Virtual cameras cannot be used as the Morphly input. Select your integrated or USB hardware camera.';
+      return 'Virtual cameras cannot be used as the Vixy input. Select your integrated or USB hardware camera.';
     }
     if (cameraPermission === 'denied') {
       return 'Camera permission is required. Allow access, then refresh the camera list.';
@@ -2705,14 +2705,14 @@ function Dashboard() {
     if (!referenceImage && activeBgPreset === 'original' && !customBgPrompt.trim()) {
       return 'Upload a reference image before starting.';
     }
-    if (isValidatingImage) return 'Morphly is checking the reference image.';
+    if (isValidatingImage) return 'Vixy is checking the reference image.';
     if (!isDevOrPreview && credits < minCreditsToStart) {
       return 'You do not have enough credits. Buy credits to continue.';
     }
-    if (!isEngineReady) return engineLoadError || 'The Morphly engine is not ready yet.';
+    if (!isEngineReady) return engineLoadError || 'The Vixy engine is not ready yet.';
     if (!isDevOrPreview && isUpdaterBlocking) return 'Wait for the application update process to finish.';
-    if (isLoading) return 'Morphly is already starting.';
-    if (isStreaming) return 'Morphly is already streaming.';
+    if (isLoading) return 'Vixy is already starting.';
+    if (isStreaming) return 'Vixy is already streaming.';
     return null;
   };
 
@@ -2729,7 +2729,7 @@ function Dashboard() {
       throw new Error('Upload a reference image before starting.');
     }
     if (!isEngineReady) {
-      throw new Error(engineLoadError || 'The Morphly engine is not ready yet.');
+      throw new Error(engineLoadError || 'The Vixy engine is not ready yet.');
     }
     if (!isDevOrPreview && credits < minCreditsToStart) {
       throw new Error('You do not have enough credits. Buy credits to continue.');
@@ -2771,7 +2771,7 @@ function Dashboard() {
     try {
       await revalidateStartRequirements();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Morphly could not validate the stream setup.';
+      const message = error instanceof Error ? error.message : 'Vixy could not validate the stream setup.';
       if (/camera|permission/i.test(message)) {
         setCameraError(message);
         void refreshCameras();
@@ -2793,7 +2793,7 @@ function Dashboard() {
     firstFrameTrackedRef.current = false;
 
     // Arm the virtual camera publisher. The live frames come from the main
-    // Morphly output stream; the popup, if opened, is only an optional mirror.
+    // Vixy output stream; the popup, if opened, is only an optional mirror.
     morphlyCamWindowEnabledRef.current = true;
     const virtualCameraStartPromise = window.electron
       ? window.electron.invoke('virtual-camera:start').catch((err: unknown) => {
@@ -2810,8 +2810,8 @@ function Dashboard() {
     void virtualCameraStartPromise.then((virtualCameraStartResult) => {
       if (virtualCameraStartResult && virtualCameraStartResult.success === false) {
         morphlyCamWindowEnabledRef.current = false;
-        const message = virtualCameraStartResult.error || virtualCameraStartResult.message || 'Morphly virtual camera is unavailable';
-        console.warn('Morphly virtual camera is unavailable:', message);
+        const message = virtualCameraStartResult.error || virtualCameraStartResult.message || 'Vixy virtual camera is unavailable';
+        console.warn('Vixy virtual camera is unavailable:', message);
         setDashboardError({
           title: 'Virtual camera unavailable',
           message,
@@ -2819,7 +2819,7 @@ function Dashboard() {
       } else if (isVirtualCameraProfile(virtualCameraStartResult?.profile)) {
         virtualCameraProfileRef.current = virtualCameraStartResult.profile;
         console.info(
-          `Morphly virtual camera using ${virtualCameraStartResult.profile.mode} profile: ` +
+          `Vixy virtual camera using ${virtualCameraStartResult.profile.mode} profile: ` +
           `${virtualCameraStartResult.profile.width}x${virtualCameraStartResult.profile.height}` +
           `@${virtualCameraStartResult.profile.frameRate}`,
         );
@@ -2876,7 +2876,7 @@ function Dashboard() {
         const responseProvider = resolveRealtimeProvider(startResponse.provider);
         if (responseProvider !== requestedProvider) {
           throw new Error(
-            `${requestedProviderLabel} is not enabled on the connected Morphly server yet.`,
+            `${requestedProviderLabel} is not enabled on the connected Vixy server yet.`,
           );
         }
 
@@ -2987,7 +2987,7 @@ function Dashboard() {
       morphlyCamWindowEnabledRef.current = false;
       stopWebcam();
       disconnectRealtime();
-      closeMorphlyCamWindow({ clearStream: true });
+      closeVixyCamWindow({ clearStream: true });
       setIsStreaming(false);
       setSessionStatus('IDLE');
       setUiStatus('Disconnected');
@@ -3023,7 +3023,7 @@ function Dashboard() {
         title: 'Image not accepted',
         message: error instanceof Error
           ? error.message
-          : 'Morphly could not read that image. Select another image file.',
+          : 'Vixy could not read that image. Select another image file.',
       });
       return;
     } finally {
@@ -3067,7 +3067,7 @@ function Dashboard() {
       console.error('Unable to change full-screen mode:', error);
       setDashboardError({
         title: 'Display mode unavailable',
-        message: 'Morphly could not change the display mode. Try again or use the window controls.',
+        message: 'Vixy could not change the display mode. Try again or use the window controls.',
       });
     }
   };
@@ -3099,7 +3099,7 @@ function Dashboard() {
       console.warn('Unable to save guided-tour completion:', error);
       setDashboardError({
         title: 'Guide preference not saved',
-        message: 'The guide finished, but Morphly could not save the completion state.',
+        message: 'The guide finished, but Vixy could not save the completion state.',
       });
     });
   };
@@ -3110,7 +3110,7 @@ function Dashboard() {
       console.warn('Unable to save guided-tour skip state:', error);
       setDashboardError({
         title: 'Guide preference not saved',
-        message: 'Morphly could not save the skipped guide state.',
+        message: 'Vixy could not save the skipped guide state.',
       });
     });
   };

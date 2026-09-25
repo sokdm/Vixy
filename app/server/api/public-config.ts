@@ -36,7 +36,7 @@ export default async function handler(req, res) {
     flutterwavePublicKey: '',
     ivorypayPublicKey,
     isCryptoPaymentEnabled,
-    supabaseUrl: process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '',
-    supabaseAnonKey: process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '',
+    databaseProvider: 'mongodb',
+    authProvider: 'vixy',
   });
 }

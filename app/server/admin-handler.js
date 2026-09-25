@@ -1,420 +1,170 @@
 // @ts-nocheck
-import { authenticateRequestUser, getAdminMembership, requireAdminContext } from '../../shared/admin-auth.js';
-import { readAdminAuditLog } from '../../shared/admin-audit.js';
+import { requireAdminContext } from '../../shared/admin-auth.js';
 import {
-  adjustUserCredits,
-  deleteUserAccount,
-  getAdminOverview,
-  listAdminUsers,
-  listAdminTransactions,
-  listAdminUsage,
-  listAdminReferrals,
-  disqualifyAdminReferral,
-  listSystemLogs,
-  listUserAccountHistory,
-  setUserStatus,
-  listCreditPackages,
-  updateCreditPackages,
-} from '../../shared/admin-service.js';
-import { createCreditPackage } from '../../shared/credit-packages.js';
-import { logErrorEvent, logRequestEvent } from '../../shared/backend-logger.js';
-import { supabaseAdmin, supabaseAdminConfigError } from './supabase-admin.js';
-import {
-  applyVerifiedFlutterwavePayment,
-  extractFlutterwavePaymentContext,
-  validateFlutterwaveTransaction,
-  verifyFlutterwaveTransaction,
-} from './flutterwave-payment.js';
+  AnalyticsEventModel,
+  connectMongo,
+  ErrorLogModel,
+  SessionModel,
+  TransactionModel,
+  UserModel,
+  WalletModel,
+} from './mongo.js';
 
-const ADMIN_ROUTE_CONFIG = {
-  me: {
-    path: '/api/admin-me',
-    methods: ['GET'],
-    event: 'admin-me',
-    handler: handleAdminMe,
-  },
-  overview: {
-    path: '/api/admin-overview',
-    methods: ['GET'],
-    event: 'admin-overview',
-    handler: handleAdminOverview,
-  },
-  users: {
-    path: '/api/admin-users',
-    methods: ['GET', 'POST', 'DELETE'],
-    event: 'admin-users',
-    handler: handleAdminUsers,
-  },
-  transactions: { path: '/api/admin-transactions', methods: ['GET', 'POST'], event: 'admin-transactions', handler: handleAdminTransactions },
-  usage: { path: '/api/admin-usage', methods: ['GET'], event: 'admin-usage', handler: handleAdminUsage },
-  logs: { path: '/api/admin-logs', methods: ['GET'], event: 'admin-logs', handler: handleAdminLogs },
-  'credit-packages': {
-    path: '/api/admin-credit-packages',
-    methods: ['GET', 'POST', 'PUT'],
-    event: 'admin-credit-packages',
-    handler: handleAdminCreditPackages,
-  },
-  'audit-log': {
-    path: '/api/admin-audit-log',
-    methods: ['GET'],
-    event: 'admin-audit-log',
-    handler: handleAdminAuditLog,
-  },
-  referrals: {
-    path: '/api/admin-referrals',
-    methods: ['GET', 'POST'],
-    event: 'admin-referrals',
-    handler: handleAdminReferrals,
-  },
-};
-
-function normalizeRouteName(value) {
-  if (Array.isArray(value)) {
-    return normalizeRouteName(value[0]);
-  }
-
-  return typeof value === 'string' ? value.trim() : '';
+function methodNotAllowed(res) {
+  return res.status(405).json({ error: 'Method not allowed' });
 }
 
-function getReportOptions(req) {
-  return {
-    days: req.query?.days,
-    platform: req.query?.platform,
-    source: req.query?.source,
-    status: req.query?.status,
-  };
+async function requireAdmin(req, res) {
+  await connectMongo();
+  return requireAdminContext(req, res);
 }
 
-function creditAdjustmentErrorStatus(error) {
-  const message = String(error?.message || error || '');
-  if (/admin access required|super admin access required/i.test(message)) return 403;
-  if (/cannot deduct|wallet only has|idempotency key was already used|conflict/i.test(message)) return 409;
-  if (/required|valid|non-zero integer|between -?\d+ and|wallet not found/i.test(message)) return 400;
-  return 500;
+async function handleAdminMe(req, res) {
+  if (req.method !== 'GET') return methodNotAllowed(res);
+  const admin = await requireAdmin(req, res);
+  if (!admin) return;
+  return res.json({ user: admin.user, membership: admin.membership });
 }
 
-async function handleAdminReferrals(req, res, routeConfig) {
-  await logRequestEvent(`${routeConfig.event}.request`, {
-    method: req.method,
-    path: routeConfig.path,
+async function handleAdminOverview(req, res) {
+  if (req.method !== 'GET') return methodNotAllowed(res);
+  const admin = await requireAdmin(req, res);
+  if (!admin) return;
+
+  const [users, wallets, sessions, transactions, errors] = await Promise.all([
+    UserModel.countDocuments(),
+    WalletModel.find().lean(),
+    SessionModel.find().sort({ createdAt: -1 }).limit(20).lean(),
+    TransactionModel.find().sort({ createdAt: -1 }).limit(20).lean(),
+    ErrorLogModel.find().sort({ lastSeenAt: -1 }).limit(20).lean(),
+  ]);
+
+  return res.json({
+    totals: {
+      users,
+      credits: wallets.reduce((sum, wallet) => sum + Number(wallet.credits || 0), 0),
+      sessions: sessions.length,
+      transactions: transactions.length,
+      errors: errors.length,
+    },
+    recentSessions: sessions,
+    recentTransactions: transactions,
+    recentErrors: errors,
   });
-
-  try {
-    const adminContext = await requireAdminContext(req, res, supabaseAdmin);
-    if (!adminContext) return;
-
-    if (req.method === 'GET') {
-      return res.json(await listAdminReferrals(supabaseAdmin, getReportOptions(req)));
-    }
-
-    const result = await disqualifyAdminReferral(supabaseAdmin, {
-      referralId: req.body?.referralId,
-      reason: req.body?.reason,
-      adminUserId: adminContext.user.id,
-    });
-    return res.json(result);
-  } catch (error) {
-    await logErrorEvent(`${routeConfig.event}.exception`, error);
-    return res.status(500).json({ error: 'Failed to load referral administration data' });
-  }
 }
 
-function setResponseHeaders(res, methods) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', [...methods, 'OPTIONS'].join(', '));
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Cache-Control', 'no-store, max-age=0');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Vary', 'Authorization');
-}
+async function handleAdminUsers(req, res) {
+  const admin = await requireAdmin(req, res);
+  if (!admin) return;
 
-export function createAdminHandler(routeName) {
-  return async function adminHandler(req, res) {
-    return handleAdminRoute(routeName, req, res);
-  };
-}
-
-export async function handleAdminRoute(routeName, req, res) {
-  const normalizedRoute = normalizeRouteName(routeName);
-  const routeConfig = ADMIN_ROUTE_CONFIG[normalizedRoute];
-
-  if (!routeConfig) {
-    setResponseHeaders(res, ['GET']);
-    return res.status(404).json({ error: 'Admin route not found' });
-  }
-
-  setResponseHeaders(res, routeConfig.methods);
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (!routeConfig.methods.includes(req.method)) {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  if (!supabaseAdmin) {
-    return res.status(503).json({ error: supabaseAdminConfigError || 'Supabase admin is not configured' });
-  }
-
-  return routeConfig.handler(req, res, routeConfig);
-}
-
-async function handleAdminMe(req, res, routeConfig) {
-  await logRequestEvent(`${routeConfig.event}.request`, {
-    method: req.method,
-    path: routeConfig.path,
-  });
-
-  try {
-    const authResult = await authenticateRequestUser(req, supabaseAdmin);
-    if (authResult.error) {
-      return res.status(authResult.status).json({ error: authResult.error });
-    }
-
-    const membership = await getAdminMembership(supabaseAdmin, authResult.user.id);
-
+  if (req.method === 'GET') {
+    const users = await UserModel.find().sort({ createdAt: -1 }).limit(250).lean();
+    const wallets = await WalletModel.find({ userId: { $in: users.map((user) => user._id) } }).lean();
+    const walletByUser = new Map(wallets.map((wallet) => [String(wallet.userId), wallet]));
     return res.json({
-      isAdmin: Boolean(membership),
-      role: membership?.role ?? null,
-      email: authResult.user.email || null,
-      userId: authResult.user.id,
-    });
-  } catch (error) {
-    await logErrorEvent(`${routeConfig.event}.exception`, error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-}
-
-async function handleAdminOverview(req, res, routeConfig) {
-  await logRequestEvent(`${routeConfig.event}.request`, {
-    method: req.method,
-    path: routeConfig.path,
-  });
-
-  try {
-    const adminContext = await requireAdminContext(req, res, supabaseAdmin);
-    if (!adminContext) {
-      return;
-    }
-
-    const overview = await getAdminOverview(supabaseAdmin, getReportOptions(req));
-    return res.json(overview);
-  } catch (error) {
-    await logErrorEvent(`${routeConfig.event}.exception`, error);
-    return res.status(500).json({ error: 'Failed to load admin overview' });
-  }
-}
-
-async function handleAdminUsers(req, res, routeConfig) {
-  await logRequestEvent(`${routeConfig.event}.request`, {
-    method: req.method,
-    path: routeConfig.path,
-  });
-
-  try {
-    const adminContext = await requireAdminContext(req, res, supabaseAdmin);
-    if (!adminContext) {
-      return;
-    }
-
-    if (req.method === 'GET') {
-      const users = await listAdminUsers(supabaseAdmin, getReportOptions(req));
-      return res.json({ users });
-    }
-
-    if (req.method === 'POST') {
-      if (req.body?.action === 'status') {
-        const result = await setUserStatus(supabaseAdmin, { ...req.body, adminUserId: adminContext.user.id });
-        return res.json(result);
-      }
-      const adjustment = Number(req.body?.adjustment ?? req.body?.amount ?? req.body?.creditsToAdd);
-      if (adjustment < 0 && adminContext.admin.role !== 'super_admin') {
-        return res.status(403).json({ error: 'Super admin access is required to remove credits' });
-      }
-      const result = await adjustUserCredits(supabaseAdmin, {
-        userId: req.body?.userId,
-        adjustment,
-        reason: req.body?.reason,
-        idempotencyKey: req.body?.idempotencyKey,
-        adminUserId: adminContext.user.id,
-      });
-
-      await logRequestEvent(
-        result.adjustment < 0 ? 'admin-users.credits_deducted' : 'admin-users.credits_added',
-        {
-          adminUserId: adminContext.user.id,
-          userId: result.userId,
-          adjustment: result.adjustment,
-          creditsAdded: result.creditsAdded,
-          creditsDeducted: result.creditsDeducted,
-          newCredits: result.newCredits,
-        },
-      );
-
-      return res.json(result);
-    }
-
-    if (req.body?.userId === adminContext.user.id) {
-      return res.status(400).json({ error: 'You cannot delete your own admin account from this dashboard' });
-    }
-
-    const result = await deleteUserAccount(supabaseAdmin, {
-      userId: req.body?.userId,
-    });
-
-    await logRequestEvent('admin-users.deleted', {
-      adminUserId: adminContext.user.id,
-      userId: result.userId,
-    });
-
-    return res.json(result);
-  } catch (error) {
-    await logErrorEvent(`${routeConfig.event}.exception`, error, {
-      method: req.method,
-    });
-    const status = req.method === 'POST' && req.body?.action !== 'status'
-      ? creditAdjustmentErrorStatus(error)
-      : 500;
-    return res.status(status).json({ error: error instanceof Error ? error.message : 'Internal server error' });
-  }
-}
-
-async function handleAdminCreditPackages(req, res, routeConfig) {
-  await logRequestEvent(`${routeConfig.event}.request`, {
-    method: req.method,
-    path: routeConfig.path,
-  });
-
-  try {
-    const adminContext = await requireAdminContext(req, res, supabaseAdmin);
-    if (!adminContext) {
-      return;
-    }
-
-    if (req.method === 'GET') {
-      const packages = await listCreditPackages(supabaseAdmin, { includeInactive: true });
-      return res.json({ packages });
-    }
-
-    if (req.method === 'POST') {
-      const packageRecord = await createCreditPackage(supabaseAdmin, req.body);
-      await supabaseAdmin.from('admin_audit_logs').insert({ admin_user_id: adminContext.user.id, action: 'package.created', target_type: 'credit_package', target_id: packageRecord.id, after_data: packageRecord });
-      return res.status(201).json(packageRecord);
-    }
-
-    const packages = await updateCreditPackages(supabaseAdmin, req.body?.packages);
-
-    await supabaseAdmin.from('admin_audit_logs').insert({ admin_user_id: adminContext.user.id, action: 'packages.updated', target_type: 'credit_package', after_data: { count: packages.length } });
-
-    await logRequestEvent('admin-credit-packages.updated', {
-      adminUserId: adminContext.user.id,
-      count: packages.length,
-    });
-
-    return res.json({ packages });
-  } catch (error) {
-    await logErrorEvent(`${routeConfig.event}.exception`, error, {
-      method: req.method,
-    });
-    return res.status(500).json({ error: error instanceof Error ? error.message : 'Internal server error' });
-  }
-}
-
-async function handleAdminAuditLog(req, res, routeConfig) {
-  await logRequestEvent(`${routeConfig.event}.request`, {
-    method: req.method,
-    path: routeConfig.path,
-  });
-
-  try {
-    const adminContext = await requireAdminContext(req, res, supabaseAdmin);
-    if (!adminContext) {
-      return;
-    }
-
-    if (req.query?.userId) {
-      return res.json(await listUserAccountHistory(supabaseAdmin, {
-        userId: req.query.userId,
-        limit: req.query?.limit,
-      }));
-    }
-
-    const entries = await readAdminAuditLog({ limit: req.query?.limit || 50 }, supabaseAdmin);
-    return res.json({ entries });
-  } catch (error) {
-    await logErrorEvent(`${routeConfig.event}.exception`, error);
-    const status = /valid userId/i.test(String(error?.message || '')) ? 400 : 500;
-    return res.status(status).json({
-      error: status === 400 ? error.message : 'Failed to load admin audit log',
+      users: users.map((user) => ({
+        id: String(user._id),
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        accountStatus: user.accountStatus,
+        credits: walletByUser.get(String(user._id))?.credits || 0,
+        createdAt: user.createdAt,
+      })),
     });
   }
+
+  if (req.method === 'POST') {
+    const userId = req.body?.userId || req.body?.id;
+    if (!userId) return res.status(400).json({ error: 'Missing userId' });
+    const update = {};
+    if (req.body?.accountStatus) update.accountStatus = req.body.accountStatus;
+    if (req.body?.role) update.role = req.body.role;
+    const user = await UserModel.findByIdAndUpdate(userId, update, { new: true }).lean();
+    return res.json({ user });
+  }
+
+  if (req.method === 'DELETE') {
+    const userId = req.query?.userId || req.body?.userId;
+    if (!userId) return res.status(400).json({ error: 'Missing userId' });
+    await Promise.all([
+      UserModel.deleteOne({ _id: userId }),
+      WalletModel.deleteOne({ userId }),
+      TransactionModel.deleteMany({ userId }),
+      SessionModel.deleteMany({ userId }),
+    ]);
+    return res.json({ deleted: true });
+  }
+
+  return methodNotAllowed(res);
 }
 
 async function handleAdminTransactions(req, res) {
-  try {
-    const admin = await requireAdminContext(req, res, supabaseAdmin); if (!admin) return;
-    if (req.method === 'GET') {
-      return res.json({
-        transactions: await listAdminTransactions(supabaseAdmin, getReportOptions(req)),
-        asOf: new Date().toISOString(),
-      });
-    }
-
-    const transactionId = String(req.body?.transactionId || '').trim();
-    const userId = String(req.body?.userId || '').trim();
-    const packageId = String(req.body?.packageId || '').trim();
-    const expectedReference = String(req.body?.reference || '').trim() || null;
-    if (!transactionId || !userId || !packageId) return res.status(400).json({ error: 'Transaction ID, user and package are required' });
-    const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
-    if (!secretKey) return res.status(500).json({ error: 'Flutterwave verification is not configured' });
-
-    const verification = await verifyFlutterwaveTransaction(transactionId, secretKey);
-    if (!verification.isVerified) return res.status(400).json({ error: verification.data?.message || 'Flutterwave could not verify this payment' });
-    const context = extractFlutterwavePaymentContext(verification.transaction, { reference: expectedReference, userId, packageId });
-    const gatewayPackageId = verification.transaction?.meta?.packageId || verification.transaction?.meta?.package_id;
-    if (gatewayPackageId && gatewayPackageId !== packageId) return res.status(400).json({ error: 'Payment package mismatch' });
-    const validation = validateFlutterwaveTransaction(verification.transaction, context.reference);
-    if (!validation.ok) return res.status(400).json({ error: validation.message });
-
-    const result = await applyVerifiedFlutterwavePayment({
-      reference: validation.reference, userId, packageId, transactionId,
-      amountPaidNGN: validation.amountPaidNGN,
-      gatewayFeeNGN: Number(verification.transaction?.app_fee || 0),
-    });
-    await supabaseAdmin.from('admin_audit_logs').insert({
-      admin_user_id: admin.user.id, action: 'payment.reconciled', target_type: 'transaction',
-      target_id: String(transactionId), reason: 'Admin verified against Flutterwave',
-      after_data: { userId, packageId, reference: validation.reference, amountPaidNGN: validation.amountPaidNGN, ...result },
-    });
-    return res.json(result);
-  }
-  catch (error) { await logErrorEvent('admin-transactions.exception', error); return res.status(500).json({ error: error instanceof Error ? error.message : 'Transaction operation failed' }); }
+  const admin = await requireAdmin(req, res);
+  if (!admin) return;
+  if (req.method !== 'GET') return methodNotAllowed(res);
+  const transactions = await TransactionModel.find().sort({ createdAt: -1 }).limit(250).lean();
+  return res.json({ transactions });
 }
 
-async function handleAdminUsage(req, res, routeConfig) {
-  await logRequestEvent(`${routeConfig.event}.request`, {
-    method: req.method,
-    path: routeConfig.path,
-  });
-
-  try {
-    const admin = await requireAdminContext(req, res, supabaseAdmin);
-    if (!admin) return;
-    return res.json(await listAdminUsage(supabaseAdmin, getReportOptions(req)));
-  } catch (error) {
-    await logErrorEvent(`${routeConfig.event}.exception`, error);
-    return res.status(500).json({ error: 'Failed to load AI provider usage' });
-  }
+async function handleAdminUsage(req, res) {
+  const admin = await requireAdmin(req, res);
+  if (!admin) return;
+  if (req.method !== 'GET') return methodNotAllowed(res);
+  const [sessions, events] = await Promise.all([
+    SessionModel.find().sort({ createdAt: -1 }).limit(250).lean(),
+    AnalyticsEventModel.find().sort({ createdAt: -1 }).limit(250).lean(),
+  ]);
+  return res.json({ sessions, events });
 }
 
 async function handleAdminLogs(req, res) {
-  try {
-    const admin = await requireAdminContext(req, res, supabaseAdmin); if (!admin) return;
-    return res.json({
-      logs: await listSystemLogs(supabaseAdmin, getReportOptions(req)),
-      asOf: new Date().toISOString(),
-    });
-  }
-  catch (error) { await logErrorEvent('admin-logs.exception', error); return res.status(500).json({ error: 'Failed to load logs' }); }
+  const admin = await requireAdmin(req, res);
+  if (!admin) return;
+  if (req.method !== 'GET') return methodNotAllowed(res);
+  const logs = await ErrorLogModel.find().sort({ lastSeenAt: -1 }).limit(250).lean();
+  return res.json({ logs });
+}
+
+async function handleNotReady(req, res) {
+  const admin = await requireAdmin(req, res);
+  if (!admin) return;
+  return res.json({ items: [], message: 'This Vixy admin section is ready for Mongo-backed data.' });
+}
+
+const ADMIN_ROUTE_CONFIG = {
+  me: { methods: ['GET'], handler: handleAdminMe },
+  overview: { methods: ['GET'], handler: handleAdminOverview },
+  users: { methods: ['GET', 'POST', 'DELETE'], handler: handleAdminUsers },
+  transactions: { methods: ['GET'], handler: handleAdminTransactions },
+  usage: { methods: ['GET'], handler: handleAdminUsage },
+  logs: { methods: ['GET'], handler: handleAdminLogs },
+  'credit-packages': { methods: ['GET', 'POST', 'PUT'], handler: handleNotReady },
+  'audit-log': { methods: ['GET'], handler: handleNotReady },
+  referrals: { methods: ['GET', 'POST'], handler: handleNotReady },
+};
+
+export function createAdminHandler(routeName) {
+  const config = ADMIN_ROUTE_CONFIG[routeName];
+  if (!config) throw new Error(`Unknown admin route: ${routeName}`);
+
+  return async function adminHandler(req, res) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', `${config.methods.join(', ')}, OPTIONS`);
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Cache-Control', 'no-store');
+
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    if (!config.methods.includes(req.method)) return methodNotAllowed(res);
+
+    try {
+      return await config.handler(req, res);
+    } catch (error) {
+      return res.status(500).json({ error: error instanceof Error ? error.message : 'Admin request failed' });
+    }
+  };
+}
+
+export function handleAdminRoute(routeName, req, res) {
+  return createAdminHandler(routeName)(req, res);
 }

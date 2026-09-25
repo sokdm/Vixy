@@ -120,16 +120,19 @@ function Login() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-[400px]">
         <div className="flex items-center justify-center gap-3 mb-8">
-          <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+          <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shadow-premium">
             <Video className="w-5 h-5 text-primary-foreground" />
           </div>
-          <span className="text-xl font-semibold text-foreground tracking-tight">Morphly</span>
+          <div>
+            <span className="block text-xl font-semibold text-foreground tracking-tight">Vixy</span>
+            <span className="block text-xs uppercase tracking-[0.22em] text-muted-foreground">AI Camera Studio</span>
+          </div>
         </div>
 
-        <Card className="bg-background border-border">
+        <Card className="bg-card/95 border-border shadow-premium">
           <CardHeader className="pb-6">
             <CardTitle className="text-xl font-semibold text-foreground text-center">
-              {isLogin ? 'Sign in to your account' : 'Create your account'}
+              {isLogin ? 'Sign in to Vixy' : 'Create your Vixy account'}
             </CardTitle>
           </CardHeader>
           <CardContent>

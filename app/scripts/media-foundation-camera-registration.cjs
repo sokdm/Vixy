@@ -2,7 +2,7 @@ const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-const REGISTRAR_EXE = 'morphly_cam_registrar.exe';
+const REGISTRAR_EXE = 'vixy_cam_registrar.exe';
 const BUILD_CONFIGS = ['Release', 'RelWithDebInfo', 'Debug'];
 
 function getRegistrarCandidates(appDirectory = path.resolve(__dirname, '..')) {

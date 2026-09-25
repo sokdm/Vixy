@@ -133,11 +133,11 @@ export function createMeanVcRuntimeController({
   let warmStopRequested = false;
   let warmRestartTimer = null;
   let engineState = 'loading';
-  let engineMessage = 'Preloading MorphlyVC models...';
+  let engineMessage = 'Preloading VixyVC models...';
   let voiceState = 'empty';
   let preparedReferenceId = null;
   let runtimeState = 'stopped';
-  let runtimeMessage = 'MorphlyVC is warming up with the microphone closed.';
+  let runtimeMessage = 'VixyVC is warming up with the microphone closed.';
   let runtimeConfiguration = null;
   let startedAt = null;
   let stopRequested = false;
@@ -178,7 +178,7 @@ export function createMeanVcRuntimeController({
         windowsHide: true,
       },
     );
-    const dependencyError = `${probe.stderr || probe.stdout || probe.error?.message || 'MorphlyVC Python dependencies are missing.'}`
+    const dependencyError = `${probe.stderr || probe.stdout || probe.error?.message || 'VixyVC Python dependencies are missing.'}`
       .trim()
       .split(/\r?\n/)
       .find(Boolean)
@@ -186,7 +186,7 @@ export function createMeanVcRuntimeController({
     const result = probe.error || probe.status !== 0
       ? {
           ready: false,
-          error: dependencyError || 'MorphlyVC Python dependencies are missing.',
+          error: dependencyError || 'VixyVC Python dependencies are missing.',
         }
       : { ready: true, error: null };
 
@@ -278,7 +278,7 @@ export function createMeanVcRuntimeController({
       engineState = 'ready';
       engineMessage = 'Models loaded. Microphone is closed.';
       if (runtimeState === 'stopped') {
-        runtimeMessage = 'MorphlyVC is ready. Microphone is off.';
+        runtimeMessage = 'VixyVC is ready. Microphone is off.';
       }
       return;
     }
@@ -297,14 +297,14 @@ export function createMeanVcRuntimeController({
 
     if (line.startsWith('[Stream] Running')) {
       runtimeState = 'running';
-      runtimeMessage = 'MorphlyVC voice conversion is live.';
+      runtimeMessage = 'VixyVC voice conversion is live.';
       return;
     }
 
     if (line.startsWith('[Stream] Stopped')) {
       performance = null;
       runtimeState = 'stopped';
-      runtimeMessage = 'MorphlyVC is ready. Microphone is off.';
+      runtimeMessage = 'VixyVC is ready. Microphone is off.';
       runtimeConfiguration = null;
       startedAt = null;
       return;
@@ -319,7 +319,7 @@ export function createMeanVcRuntimeController({
     }
 
     if (source === 'stderr' && line.startsWith('[Control]')) {
-      const message = line.replace(/^\[Control\]\s*/, '') || 'MorphlyVC could not complete the request.';
+      const message = line.replace(/^\[Control\]\s*/, '') || 'VixyVC could not complete the request.';
       if (voiceState === 'loading') {
         voiceState = 'failed';
       }
@@ -355,16 +355,16 @@ export function createMeanVcRuntimeController({
     const bundledRuntime = inspectBundledRuntime();
     if (!bundledRuntime.ready) {
       engineState = 'failed';
-      engineMessage = bundledRuntime.error || 'MorphlyVC could not preload its models.';
+      engineMessage = bundledRuntime.error || 'VixyVC could not preload its models.';
       runtimeMessage = engineMessage;
       return;
     }
 
     warmStopRequested = false;
     engineState = 'loading';
-    engineMessage = 'Preloading MorphlyVC models...';
+    engineMessage = 'Preloading VixyVC models...';
     performance = null;
-    runtimeMessage = 'MorphlyVC is warming up with the microphone closed.';
+    runtimeMessage = 'VixyVC is warming up with the microphone closed.';
     logs.length = 0;
 
     warmProcess = spawnProcess(
@@ -389,19 +389,19 @@ export function createMeanVcRuntimeController({
       runtimeMessage = error.message;
     });
     warmProcess.once('exit', (code, signal) => {
-      appendLog('system', `MorphlyVC warm engine exited with code ${code ?? 'null'} and signal ${signal ?? 'none'}.`);
+      appendLog('system', `VixyVC warm engine exited with code ${code ?? 'null'} and signal ${signal ?? 'none'}.`);
       warmProcess = null;
       preparedReferenceId = null;
       voiceState = 'empty';
 
       if (warmStopRequested) {
         engineState = 'stopped';
-        engineMessage = 'MorphlyVC engine is stopped.';
+        engineMessage = 'VixyVC engine is stopped.';
         return;
       }
 
       engineState = 'failed';
-      engineMessage = `MorphlyVC warm engine stopped unexpectedly (exit ${code ?? 'unknown'}).`;
+      engineMessage = `VixyVC warm engine stopped unexpectedly (exit ${code ?? 'unknown'}).`;
       runtimeState = 'failed';
       runtimeMessage = engineMessage;
       if (!warmRestartTimer) {
@@ -415,7 +415,7 @@ export function createMeanVcRuntimeController({
 
   const sendWarmCommand = (command) => {
     if (!warmProcess?.stdin?.writable) {
-      throw new Error('MorphlyVC is still warming up. Please wait for Ready.');
+      throw new Error('VixyVC is still warming up. Please wait for Ready.');
     }
     warmProcess.stdin.write(`${JSON.stringify(command)}\n`);
   };
@@ -487,7 +487,7 @@ export function createMeanVcRuntimeController({
       throw new Error('Reference recordings must be 25 MB or smaller.');
     }
     if (path.extname(originalName).toLowerCase() !== '.wav') {
-      throw new Error('MorphlyVC reference recordings must use the WAV format.');
+      throw new Error('VixyVC reference recordings must use the WAV format.');
     }
 
     const referenceDirectory = path.join(dataRoot, 'references');
@@ -506,18 +506,18 @@ export function createMeanVcRuntimeController({
 
   const prepare = ({ referenceId }) => {
     if (!/^[0-9a-f-]{36}$/i.test(referenceId ?? '')) {
-      throw new Error('Upload a WAV reference recording before preparing MorphlyVC.');
+      throw new Error('Upload a WAV reference recording before preparing VixyVC.');
     }
     if (runtimeState === 'starting' || runtimeState === 'running') {
       throw new Error('Stop live conversion before changing the voice profile.');
     }
     if (engineState !== 'ready') {
-      throw new Error('MorphlyVC is still warming up. Please wait for Ready.');
+      throw new Error('VixyVC is still warming up. Please wait for Ready.');
     }
 
     const referencePath = path.join(dataRoot, 'references', `${referenceId}.wav`);
     if (!fs.existsSync(referencePath)) {
-      throw new Error('The selected MorphlyVC reference recording is no longer available.');
+      throw new Error('The selected VixyVC reference recording is no longer available.');
     }
 
     voiceState = 'loading';
@@ -539,10 +539,10 @@ export function createMeanVcRuntimeController({
     outputDevice = null,
   }) => {
     if (runtimeState === 'starting' || runtimeState === 'running' || runtimeProcess) {
-      throw new Error('MorphlyVC is already running.');
+      throw new Error('VixyVC is already running.');
     }
     if (!Object.hasOwn(MODEL_FILES, model)) {
-      throw new Error('Choose either the 40ms or 120ms MorphlyVC model.');
+      throw new Error('Choose either the 40ms or 120ms VixyVC model.');
     }
     if (device !== 'cpu' && device !== 'cuda') {
       throw new Error('Choose either CPU or CUDA processing.');
@@ -552,12 +552,12 @@ export function createMeanVcRuntimeController({
       throw new Error('Pitch must be between -12 and +12 semitones.');
     }
     if (!/^[0-9a-f-]{36}$/i.test(referenceId ?? '')) {
-      throw new Error('Upload a WAV reference recording before starting MorphlyVC.');
+      throw new Error('Upload a WAV reference recording before starting VixyVC.');
     }
 
     const referencePath = path.join(dataRoot, 'references', `${referenceId}.wav`);
     if (!fs.existsSync(referencePath)) {
-      throw new Error('The selected MorphlyVC reference recording is no longer available.');
+      throw new Error('The selected VixyVC reference recording is no longer available.');
     }
 
     const bundledRuntime = inspectBundledRuntime();
@@ -592,12 +592,12 @@ export function createMeanVcRuntimeController({
 
     if (useBundledRuntime) {
       if (engineState !== 'ready') {
-        throw new Error('MorphlyVC is still warming up. Please wait for Ready.');
+        throw new Error('VixyVC is still warming up. Please wait for Ready.');
       }
 
       runtimeState = 'starting';
       runtimeMessage = preparedReferenceId === referenceId && voiceState === 'ready'
-        ? 'Connecting the microphone to MorphlyVC...'
+        ? 'Connecting the microphone to VixyVC...'
         : 'Preparing the selected voice...';
       runtimeConfiguration = {
         model,
@@ -620,22 +620,22 @@ export function createMeanVcRuntimeController({
     }
 
     if (!fs.existsSync(path.join(repositoryRoot, 'runtime', 'run_rt.py'))) {
-      throw new Error('The MorphlyVC engine is not installed.');
+      throw new Error('The VixyVC engine is not installed.');
     }
     if (!python) {
-      throw new Error('Python 3.11 is required before MorphlyVC can start.');
+      throw new Error('Python 3.11 is required before VixyVC can start.');
     }
     if (!environment.ready) {
-      throw new Error(environment.error || 'Install the MorphlyVC Python dependencies before starting.');
+      throw new Error(environment.error || 'Install the VixyVC Python dependencies before starting.');
     }
     if (!modelStatus.ready) {
-      throw new Error(`MorphlyVC is missing: ${modelStatus.missingFiles.join(', ')}`);
+      throw new Error(`VixyVC is missing: ${modelStatus.missingFiles.join(', ')}`);
     }
 
     logs.length = 0;
     stopRequested = false;
     runtimeState = 'starting';
-    runtimeMessage = 'Loading MorphlyVC models...';
+    runtimeMessage = 'Loading VixyVC models...';
     runtimeConfiguration = {
       model,
       device,
@@ -670,7 +670,7 @@ export function createMeanVcRuntimeController({
       appendLog('stdout', text);
       if (text.includes('[Stream] Running')) {
         runtimeState = 'running';
-        runtimeMessage = 'MorphlyVC voice conversion is live.';
+        runtimeMessage = 'VixyVC voice conversion is live.';
       }
     });
     runtimeProcess.stderr?.on('data', (chunk) => appendLog('stderr', chunk));
@@ -681,12 +681,12 @@ export function createMeanVcRuntimeController({
       runtimeMessage = error.message;
     });
     runtimeProcess.once('exit', (code, signal) => {
-      appendLog('system', `MorphlyVC exited with code ${code ?? 'null'} and signal ${signal ?? 'none'}.`);
+      appendLog('system', `VixyVC exited with code ${code ?? 'null'} and signal ${signal ?? 'none'}.`);
       runtimeProcess = null;
       runtimeState = stopRequested || code === 0 ? 'stopped' : 'failed';
       runtimeMessage = stopRequested || code === 0
-        ? 'MorphlyVC is stopped.'
-        : `MorphlyVC stopped unexpectedly (exit ${code ?? 'unknown'}).`;
+        ? 'VixyVC is stopped.'
+        : `VixyVC stopped unexpectedly (exit ${code ?? 'unknown'}).`;
       stopRequested = false;
     });
 
@@ -706,7 +706,7 @@ export function createMeanVcRuntimeController({
       sendWarmCommand({ type: 'pitch', semitones: pitchSemitones });
     } else {
       if (!runtimeProcess?.stdin?.writable) {
-        throw new Error('This MorphlyVC runtime does not support live pitch changes.');
+        throw new Error('This VixyVC runtime does not support live pitch changes.');
       }
       runtimeProcess.stdin.write(`${JSON.stringify({
         type: 'pitch',
@@ -728,13 +728,13 @@ export function createMeanVcRuntimeController({
     if (!runtimeProcess) {
       runtimeState = 'stopped';
       runtimeMessage = engineState === 'ready'
-        ? 'MorphlyVC is ready. Microphone is off.'
-        : 'MorphlyVC is warming up with the microphone closed.';
+        ? 'VixyVC is ready. Microphone is off.'
+        : 'VixyVC is warming up with the microphone closed.';
       return getStatus();
     }
 
     stopRequested = true;
-    runtimeMessage = 'Stopping MorphlyVC...';
+    runtimeMessage = 'Stopping VixyVC...';
     runtimeProcess.kill();
     return getStatus();
   };

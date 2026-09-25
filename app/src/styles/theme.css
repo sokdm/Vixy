@@ -1,30 +1,30 @@
-/* Approved Morphly light theme. Shared by every route and portal-mounted control. */
+/* Vixy dark theme. Shared by every route and portal-mounted control. */
 :root {
-  color-scheme: light;
-  --background: 0 0% 100%;
-  --foreground: 217 17% 15%;
-  --card: 0 0% 100%;
+  color-scheme: dark;
+  --background: 222 47% 5%;
+  --foreground: 210 40% 96%;
+  --card: 222 38% 8%;
   --card-foreground: var(--foreground);
-  --popover: 0 0% 100%;
+  --popover: 222 38% 8%;
   --popover-foreground: var(--foreground);
-  --primary: 353.4146 69.4915% 46.2745%;
-  --primary-foreground: 0 0% 100%;
-  --primary-hover: 353 74% 39%;
-  --secondary: 353 100% 98%;
-  --secondary-foreground: var(--primary);
-  --muted: 220 20% 97%;
-  --muted-foreground: 217 10% 41%;
-  --accent: 353 100% 97%;
-  --accent-foreground: var(--primary);
+  --primary: 173 84% 48%;
+  --primary-foreground: 222 47% 5%;
+  --primary-hover: 173 91% 42%;
+  --secondary: 258 63% 17%;
+  --secondary-foreground: 260 100% 92%;
+  --muted: 222 28% 13%;
+  --muted-foreground: 218 16% 68%;
+  --accent: 258 63% 20%;
+  --accent-foreground: 260 100% 92%;
   --destructive: 0 72% 42%;
   --destructive-foreground: 0 0% 100%;
-  --danger-soft: 0 100% 97%;
-  --success: 153 67% 26%;
-  --success-soft: 145 50% 96%;
-  --warning: 38 71% 28%;
-  --warning-soft: 42 100% 97%;
-  --border: 218 16% 88%;
-  --input: 216 17% 73%;
+  --danger-soft: 0 52% 13%;
+  --success: 153 67% 48%;
+  --success-soft: 153 42% 12%;
+  --warning: 41 92% 62%;
+  --warning-soft: 38 70% 13%;
+  --border: 222 24% 20%;
+  --input: 222 18% 27%;
   --ring: var(--primary);
   --radius: .5rem;
   --sidebar-background: var(--background);
@@ -41,7 +41,7 @@ html, body, #root { background: hsl(var(--background)); color: hsl(var(--foregro
 html { accent-color: hsl(var(--primary)); }
 button:not(:disabled), [role="button"]:not([aria-disabled="true"]) { cursor: pointer; }
 button, a, input, textarea, select { -webkit-tap-highlight-color: hsl(var(--primary) / .12); }
-select, option, optgroup { color-scheme: light; }
+select, option, optgroup { color-scheme: dark; }
 option, optgroup { background: hsl(var(--popover)); color: hsl(var(--popover-foreground)); }
 ::selection { background: hsl(var(--primary) / .16); color: hsl(var(--foreground)); }
 * { scrollbar-color: hsl(var(--input)) hsl(var(--muted)); scrollbar-width: thin; }

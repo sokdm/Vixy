@@ -34,21 +34,21 @@ jobs:
       working-directory: app
       run: npm test
 
-    - name: Restore MorphlyVC runtime
+    - name: Restore VixyVC runtime
       shell: pwsh
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         $runtimeDir = "app/.meanvc/runtime-40ms"
         if (!(Test-Path "$runtimeDir/python.exe")) {
-          Write-Host "Restoring MorphlyVC runtime from v2.5.0 release..."
+          Write-Host "Restoring VixyVC runtime from v2.5.0 release..."
           New-Item -ItemType Directory -Path "temp_v250" -Force | Out-Null
-          gh release download v2.5.0 --repo "${{ github.repository }}" --pattern "Morphly-Setup-2.5.0.exe" --dir temp_v250
-          Write-Host "Extracting MorphlyVC runtime from v2.5.0 installer..."
-          7z x temp_v250/Morphly-Setup-2.5.0.exe -otemp_unpacked -y
+          gh release download v2.5.0 --repo "${{ github.repository }}" --pattern "Vixy-Setup-2.5.0.exe" --dir temp_v250
+          Write-Host "Extracting VixyVC runtime from v2.5.0 installer..."
+          7z x temp_v250/Vixy-Setup-2.5.0.exe -otemp_unpacked -y
           if (Test-Path "temp_unpacked/`$PLUGINSDIR/app-64.7z") {
             7z x "temp_unpacked/`$PLUGINSDIR/app-64.7z" -otemp_app -y
-            $extractedRuntime = "temp_app/resources/morphlyvc/runtime-40ms"
+            $extractedRuntime = "temp_app/resources/vixyvc/runtime-40ms"
           } else {
             $extractedRuntime = (Get-ChildItem -Path "temp_unpacked" -Filter "runtime-40ms" -Recurse -Directory -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
           }
@@ -60,21 +60,19 @@ jobs:
         }
 
         if (!(Test-Path "$runtimeDir/python.exe")) {
-          throw "Failed to restore MorphlyVC runtime: $runtimeDir/python.exe not found."
+          throw "Failed to restore VixyVC runtime: $runtimeDir/python.exe not found."
         }
-        Write-Host "MorphlyVC runtime successfully restored."
+        Write-Host "VixyVC runtime successfully restored."
 
     - name: Test bundled voice audio buffering without microphone access
       shell: pwsh
       run: |
         & ./app/.meanvc/runtime-40ms/python.exe ./app/tests/voice-buffer.test.py
-        if ($LASTEXITCODE -ne 0) { throw "MorphlyVC audio regression tests failed." }
+        if ($LASTEXITCODE -ne 0) { throw "VixyVC audio regression tests failed." }
 
     - name: Build Electron app without publishing
       working-directory: app
       env:
-        VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL || vars.SUPABASE_URL || secrets.SUPABASE_URL }}
-        VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || vars.VITE_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY || vars.SUPABASE_ANON_KEY }}
         VITE_API_URL: ${{ vars.VITE_API_URL || secrets.VITE_API_URL }}
       run: npm run electron:build
 
@@ -102,15 +100,15 @@ jobs:
         echo "VERSION=$version" >> $env:GITHUB_OUTPUT
         echo "TAG_NAME=$tagName" >> $env:GITHUB_OUTPUT
 
-    - name: Package optional MorphlyVC voice engine
+    - name: Package optional VixyVC voice engine
       shell: pwsh
       run: |
         $runtimeDir = "app/.meanvc/runtime-40ms"
         if (!(Test-Path "$runtimeDir/python.exe")) {
-          throw "MorphlyVC runtime is missing; cannot package the optional voice engine."
+          throw "VixyVC runtime is missing; cannot package the optional voice engine."
         }
 
-        $assetPath = Join-Path (Get-Location) "app/release/morphlyvc-runtime-40ms.zip"
+        $assetPath = Join-Path (Get-Location) "app/release/vixyvc-runtime-40ms.zip"
         if (Test-Path $assetPath) { Remove-Item $assetPath -Force }
 
         # 7-Zip handles the multi-gigabyte archive reliably. Entering the parent
@@ -118,15 +116,15 @@ jobs:
         Push-Location "app/.meanvc"
         try {
           7z a -tzip -mx5 -bso0 $assetPath "runtime-40ms"
-          if ($LASTEXITCODE -ne 0) { throw "Failed to package the MorphlyVC voice engine." }
+          if ($LASTEXITCODE -ne 0) { throw "Failed to package the VixyVC voice engine." }
         } finally {
           Pop-Location
         }
 
         # GitHub requires every asset to be strictly smaller than 2 GiB.
-        # Publish 1 GiB parts and a manifest; Morphly rejoins them automatically.
+        # Publish 1 GiB parts and a manifest; Vixy rejoins them automatically.
         node app/scripts/split-voice-engine.mjs $assetPath
-        if ($LASTEXITCODE -ne 0) { throw "Failed to split the MorphlyVC voice engine." }
+        if ($LASTEXITCODE -ne 0) { throw "Failed to split the VixyVC voice engine." }
 
     - name: Verify release artifacts
       shell: pwsh
@@ -137,8 +135,8 @@ jobs:
         if (!(Test-Path $dir)) { throw "Missing output directory: $dir" }
 
         $installerCandidates = @(
-          (Join-Path $dir "Morphly-Setup-$version.exe"),
-          (Join-Path $dir "Morphly Setup $version.exe")
+          (Join-Path $dir "Vixy-Setup-$version.exe"),
+          (Join-Path $dir "Vixy Setup $version.exe")
         )
         $exe1 = $installerCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 
@@ -176,7 +174,7 @@ jobs:
         $expectedArtifacts = @(
           "UnityCaptureFilter32.dll",
           "UnityCaptureFilter64.dll",
-          "morphly_unity_capture_sender.exe",
+          "vixy_unity_capture_sender.exe",
           "THIRD_PARTY_NOTICES.txt"
         )
 
@@ -185,20 +183,20 @@ jobs:
           if (!(Test-Path $artifactPath)) { throw "Missing bundled camera artifact: $artifactPath" }
         }
 
-        foreach ($artifact in @("MorphlyVirtualCameraMF.dll", "morphly_cam_registrar.exe")) {
+        foreach ($artifact in @("VixyVirtualCameraMF.dll", "vixy_cam_registrar.exe")) {
           $artifactPath = Join-Path $bundledMediaFoundationCameraDir $artifact
           if (!(Test-Path $artifactPath)) { throw "Missing bundled Media Foundation camera artifact: $artifactPath" }
         }
 
         # The voice engine is now an optional on-demand download, so only the
         # Python bridge ships inside the installer.
-        $bundledVoiceBridge = Join-Path $dir "win-unpacked/resources/morphlyvc/meanvc-realtime.py"
-        if (!(Test-Path $bundledVoiceBridge)) { throw "Missing bundled MorphlyVC bridge: $bundledVoiceBridge" }
+        $bundledVoiceBridge = Join-Path $dir "win-unpacked/resources/vixyvc/meanvc-realtime.py"
+        if (!(Test-Path $bundledVoiceBridge)) { throw "Missing bundled VixyVC bridge: $bundledVoiceBridge" }
 
-        if (Test-Path (Join-Path $dir "win-unpacked/resources/morphlyvc/runtime-40ms")) {
+        if (Test-Path (Join-Path $dir "win-unpacked/resources/vixyvc/runtime-40ms")) {
           throw "The optional voice engine must not be bundled in the desktop installer."
         }
-        $voiceEngineManifest = Join-Path $dir "morphlyvc-runtime-40ms.zip.json"
+        $voiceEngineManifest = Join-Path $dir "vixyvc-runtime-40ms.zip.json"
         $manifest = Get-Content $voiceEngineManifest -Raw | ConvertFrom-Json
         if ($manifest.format -ne 1 -or $manifest.parts.Count -lt 1) { throw "Invalid voice engine manifest." }
         foreach ($part in $manifest.parts) {
@@ -219,10 +217,10 @@ jobs:
       run: |
         $version = "${{ steps.release-version.outputs.VERSION }}"
         $tagName = "${{ steps.release-version.outputs.TAG_NAME }}"
-        $installer = "app/release/Morphly-Setup-$version.exe"
+        $installer = "app/release/Vixy-Setup-$version.exe"
         $latest = "app/release/latest.yml"
         $blockmaps = @(Get-ChildItem -Path "app/release" -Filter "*.blockmap" | ForEach-Object { $_.FullName })
-        $voiceEngineManifest = "app/release/morphlyvc-runtime-40ms.zip.json"
+        $voiceEngineManifest = "app/release/vixyvc-runtime-40ms.zip.json"
         $manifest = Get-Content $voiceEngineManifest -Raw | ConvertFrom-Json
         $voiceEngineParts = @($manifest.parts | ForEach-Object { (Resolve-Path (Join-Path "app/release" $_.name)).Path })
         $assets = @(

@@ -106,5 +106,5 @@ test('the dashboard keeps Xmax checked uploads, X2 context, and explicit 720p st
 test('unexpected Xmax disconnects recover without closing the virtual-camera output', () => {
   assert.match(dashboard, /restartRealtimeSessionRef\.current\?\.\(`xmax-disconnect-\$\{reason\}`\)/);
   assert.match(dashboard, /retry-after-failed-restart/);
-  assert.match(dashboard, /if \(options\?\.skipStateUpdate\)[\s\S]*updateMorphlyCamStatus\('Reconnecting Morphly cam\.\.\.'\)/);
+  assert.match(dashboard, /if \(options\?\.skipStateUpdate\)[\s\S]*updateMorphlyCamStatus\('Reconnecting Vixy cam\.\.\.'\)/);
 });

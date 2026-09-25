@@ -45,7 +45,7 @@ export function StreamGuideModal({ isOpen, onClose }: StreamGuideModalProps) {
   const steps = [
     {
       num: 1,
-      title: 'Start Morphly',
+      title: 'Start Vixy',
       desc: 'Begin your Morphly session, then click "Open Capture Window" only when you want to send the feed out.',
       icon: <CheckCircle2 className="w-4 h-4 text-success" />,
     },
@@ -63,14 +63,14 @@ export function StreamGuideModal({ isOpen, onClose }: StreamGuideModalProps) {
     },
     {
       num: 4,
-      title: 'Select Morphly Cam',
-      desc: 'Choose the Morphly capture window from the list of open windows.',
+      title: 'Select Vixy Cam',
+      desc: 'Choose the Vixy capture window from the list of open windows.',
       icon: <MousePointerSquareDashed className="w-4 h-4 text-primary" />,
     },
     {
       num: 5,
       title: 'Fit the Frame',
-      desc: 'Resize or crop the capture so only the Morphly video fills the frame.',
+      desc: 'Resize or crop the capture so only the Vixy video fills the frame.',
       icon: <Scaling className="w-4 h-4 text-primary" />,
     },
     {
@@ -100,10 +100,10 @@ export function StreamGuideModal({ isOpen, onClose }: StreamGuideModalProps) {
           <div>
             <h2 className="flex items-center gap-2 text-xl font-bold text-foreground">
               <Tv className="h-5 w-5 text-primary" />
-              How to Stream Morphly
+              How to Stream Vixy
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Send Morphly into SplitCam, OBS, Zoom, WhatsApp, and similar apps
+              Send Vixy into SplitCam, OBS, Zoom, WhatsApp, and similar apps
             </p>
           </div>
           <button
@@ -139,7 +139,7 @@ export function StreamGuideModal({ isOpen, onClose }: StreamGuideModalProps) {
               <h4 className="text-sm font-semibold text-primary">Pro Tip</h4>
               <p className="mt-1 text-xs leading-relaxed text-primary">
                 In WhatsApp, Zoom, OBS, or another Windows app, open its camera settings and select
-                Morphly Virtual Camera. Keep Morphly streaming while the other app is using the camera.
+                Vixy Virtual Camera. Keep Vixy streaming while the other app is using the camera.
               </p>
             </div>
           </div>
@@ -164,7 +164,7 @@ export function StreamGuideModal({ isOpen, onClose }: StreamGuideModalProps) {
                 <ul className="mt-1.5 list-inside list-disc space-y-1 text-xs text-destructive">
                   <li>All payments are final and non-refundable</li>
                   <li>Credits purchased cannot be reversed once used</li>
-                  <li>By using Morphly, you agree to this policy</li>
+                  <li>By using Vixy, you agree to this policy</li>
                 </ul>
               </div>
             </div>

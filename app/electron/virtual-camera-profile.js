@@ -11,7 +11,7 @@ export const VIRTUAL_CAMERA_PROFILES = Object.freeze({
 export function selectVirtualCameraProfile({
   logicalCpuCount = os.cpus()?.length ?? 8,
   totalMemoryBytes = os.totalmem(),
-  override = process.env.MORPHLY_VIRTUAL_CAMERA_PROFILE
+  override = process.env.VIXY_VIRTUAL_CAMERA_PROFILE
 } = {}) {
   const requestedMode = String(override ?? '').trim().toLowerCase();
   if (Object.hasOwn(VIRTUAL_CAMERA_PROFILES, requestedMode)) {

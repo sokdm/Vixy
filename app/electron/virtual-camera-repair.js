@@ -21,7 +21,7 @@ export function buildCameraRepairCommand({ windowsDirectory, filters, registrar,
   const commands = ["$ErrorActionPreference = 'Stop'", 'try {'];
   for (const filter of filters) {
     const exe = path.win32.join(windowsDirectory, filter.bits === 32 ? 'SysWOW64' : 'System32', 'regsvr32.exe');
-    commands.push(`& ${literal(exe)} /s '/i:UnityCaptureName=Morphly Virtual Camera' ${literal(filter.path)}`);
+    commands.push(`& ${literal(exe)} /s '/i:UnityCaptureName=Vixy Virtual Camera' ${literal(filter.path)}`);
     commands.push('if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }');
   }
   if (mediaFoundationSupported) {
@@ -64,7 +64,7 @@ export function createCameraRepairService({ probe, repair }) {
           ? 'Camera repair was cancelled. No Administrator approval was granted.'
           : result.timedOut
             ? 'Camera repair has not finished. Wait for the Windows installer to close, then check again.'
-            : 'Windows could not repair the camera. Close apps using Morphly Virtual Camera and try again.' };
+            : 'Windows could not repair the camera. Close apps using Vixy Virtual Camera and try again.' };
         const after = await probe();
         return after.success ? { ...after, repaired: true, message: 'Camera registration repaired and verified. Reopen the camera selector in WhatsApp or your meeting app.' }
           : { ...after, error: 'Repair ran, but camera registration is still incomplete. Restart Windows and check again.' };

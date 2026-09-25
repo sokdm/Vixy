@@ -1,4 +1,4 @@
-{
+﻿{
   "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
@@ -12,7 +12,7 @@
   },
   "crons": [{ "path": "/api/engagement-cron", "schedule": "0 10 * * *" }],
   "rewrites": [
-    { "source": "/private/morphly/login", "destination": "/private/morphly/login/index.html" },
+    { "source": "/private/vixy/login", "destination": "/private/vixy/login/index.html" },
     { "source": "/reset-password", "destination": "/reset-password/index.html" },
     { "source": "/api/admin-me", "destination": "/api/admin?name=me" },
     { "source": "/api/admin-overview", "destination": "/api/admin?name=overview" },

@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from '@/context/AuthContext';
 import { UIProvider } from '@/context/UIContext';
 import { AppProvider } from '@/context/AppContext';
@@ -9,9 +9,9 @@ import { Toaster } from '@/components/ui/sonner';
 import Layout from '@/components/Layout';
 import LoadingScreen from '@/components/LoadingScreen';
 import { ROUTES } from '@/lib/routes';
-import { useAuth } from '@/context/AuthContext';
 
 const Login = lazy(() => import('@/pages/Login'));
+const Landing = lazy(() => import('@/pages/Landing'));
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
 const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
@@ -19,11 +19,6 @@ const Wallet = lazy(() => import('@/pages/Wallet'));
 const Subscription = lazy(() => import('@/pages/Subscription'));
 const Settings = lazy(() => import('@/pages/Settings'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
-
-function DefaultRouteRedirect() {
-  const { defaultRoute } = useAuth();
-  return <Navigate to={defaultRoute} replace />;
-}
 
 function RouteAwareToaster() {
   const { pathname } = useLocation();
@@ -35,6 +30,14 @@ function RouteAwareToaster() {
   return <Toaster />;
 }
 
+function ProtectedAppLayout() {
+  return (
+    <ProtectedRoute>
+      <Layout />
+    </ProtectedRoute>
+  );
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -44,6 +47,7 @@ function App() {
             <AppProvider>
               <Suspense fallback={<LoadingScreen />}>
                 <Routes>
+                  <Route path="/" element={<Landing />} />
                   <Route path={ROUTES.PUBLIC.RESET_PASSWORD} element={<ResetPassword />} />
                   <Route
                     path={ROUTES.PUBLIC.LOGIN}
@@ -73,15 +77,7 @@ function App() {
                       </AdminRoute>
                     }
                   />
-                  <Route
-                    path="/"
-                    element={
-                      <ProtectedRoute>
-                        <Layout />
-                      </ProtectedRoute>
-                    }
-                  >
-                    <Route index element={<DefaultRouteRedirect />} />
+                  <Route element={<ProtectedAppLayout />}>
                     <Route
                       path={ROUTES.PROTECTED.WALLET}
                       element={

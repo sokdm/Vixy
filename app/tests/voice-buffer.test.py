@@ -72,7 +72,7 @@ class VoiceTests(unittest.TestCase):
         _,samples=self.voice.output_queue.get(timeout=3)
         self.assertEqual(len(samples),2560)
         self.voice.stop()
-        self.assertEqual(self.pipeline.calls,['morphlyvc-audio-worker']*2)
+        self.assertEqual(self.pipeline.calls,['vixyvc-audio-worker']*2)
         self.assertEqual(self.failures,[])
         self.assertFalse(self.voice.worker.is_alive())
         self.assertEqual(self.pipeline._bn_save_list,[])

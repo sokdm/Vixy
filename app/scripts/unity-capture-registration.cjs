@@ -2,7 +2,7 @@ const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-const CAMERA_NAME = 'Morphly Virtual Camera';
+const CAMERA_NAME = 'Vixy Virtual Camera';
 const VIDEO_INPUT_DEVICE_CATEGORY = '{860BB310-5D01-11d0-BD3B-00A0C911CE86}';
 const FILTERS = [
   {

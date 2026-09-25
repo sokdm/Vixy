@@ -1,12 +1,12 @@
 {
-  "name": "morphly-desktop",
+  "name": "vixy-desktop",
   "private": true,
   "version": "2.5.13",
-  "description": "Morphly Desktop with virtual camera support and an optional on-demand MorphlyVC voice engine.",
-  "author": "Morphly",
+  "description": "Vixy Desktop with virtual camera support and an optional on-demand voice engine.",
+  "author": "Vixy",
   "repository": {
     "type": "git",
-    "url": "https://github.com/samuellucky2424-afk/morphly.git"
+    "url": "https://github.com/sokdm/Vixy.git"
   },
   "type": "module",
   "main": "electron/main.js",
@@ -15,7 +15,6 @@
     "dev:web": "vite",
     "dev:api": "npx kill-port 3000 && tsx server.js",
     "dev:full": "npm run dev",
-    "cleanup:stale-sessions": "node scripts/cleanup-stale-sessions.mjs",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "build": "npm run build:app",
     "build:app": "cross-env NODE_OPTIONS=--max-old-space-size=4096 tsc -b && vite build",
@@ -40,8 +39,8 @@
     "electron:release": "npm run virtual-camera:build && npm run clean:build && npm run build:app && electron-builder --win --publish always"
   },
   "build": {
-    "appId": "com.morphly.app",
-    "productName": "Morphly Desktop",
+    "appId": "com.vixy.app",
+    "productName": "Vixy Desktop",
     "compression": "maximum",
     "toolsets": {
       "winCodeSign": "1.1.0"
@@ -63,7 +62,7 @@
       },
       {
         "from": "server/meanvc-realtime.py",
-        "to": "morphlyvc/meanvc-realtime.py"
+        "to": "vixyvc/meanvc-realtime.py"
       },
       {
         "from": "build/VBCABLE_Setup_x64.exe",
@@ -79,7 +78,7 @@
       "signAndEditExecutable": true
     },
     "nsis": {
-      "artifactName": "Morphly-Setup-${version}.${ext}",
+      "artifactName": "Vixy-Setup-${version}.${ext}",
       "include": "build/installer.nsh",
       "differentialPackage": false,
       "oneClick": false,
@@ -87,13 +86,13 @@
       "allowElevation": true,
       "allowToChangeInstallationDirectory": false,
       "createDesktopShortcut": "always",
-      "shortcutName": "Morphly Desktop"
+      "shortcutName": "Vixy Desktop"
     },
     "publish": [
       {
         "provider": "github",
-        "owner": "samuellucky2424-afk",
-        "repo": "morphly",
+        "owner": "sokdm",
+        "repo": "Vixy",
         "releaseType": "release",
         "tagNamePrefix": "v"
       }
@@ -127,7 +126,6 @@
     "@radix-ui/react-toggle": "^1.1.10",
     "@radix-ui/react-toggle-group": "^1.1.11",
     "@radix-ui/react-tooltip": "^1.2.8",
-    "@supabase/supabase-js": "^2.100.1",
     "@xmaxai/sdk-global": "^1.1.7",
     "aliyun-rtc-sdk": "7.1.9",
     "class-variance-authority": "^0.7.1",
@@ -141,6 +139,7 @@
     "express": "^4.18.2",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.562.0",
+    "mongoose": "^9.10.2",
     "multer": "^1.4.5-lts.1",
     "next-themes": "^0.4.6",
     "qrcode": "^1.5.4",

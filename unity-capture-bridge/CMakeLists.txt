@@ -32,22 +32,22 @@ add_subdirectory(
     "${CMAKE_CURRENT_BINARY_DIR}/native-camera"
 )
 
-add_executable(morphly_unity_capture_sender
+add_executable(vixy_unity_capture_sender
     src/main.cpp
 )
 
-target_include_directories(morphly_unity_capture_sender PRIVATE
+target_include_directories(vixy_unity_capture_sender PRIVATE
     "${UNITY_CAPTURE_SOURCE_DIR}"
 )
 
-target_link_libraries(morphly_unity_capture_sender PRIVATE
+target_link_libraries(vixy_unity_capture_sender PRIVATE
     morphly_publisher
 )
 
-target_compile_definitions(morphly_unity_capture_sender PRIVATE
+target_compile_definitions(vixy_unity_capture_sender PRIVATE
     NOMINMAX
 )
 
-set_target_properties(morphly_unity_capture_sender PROPERTIES
-    OUTPUT_NAME "morphly_unity_capture_sender"
+set_target_properties(vixy_unity_capture_sender PROPERTIES
+    OUTPUT_NAME "vixy_unity_capture_sender"
 )

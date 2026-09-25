@@ -8,13 +8,13 @@ namespace morphly
     const GUID kWindowsVirtualCameraSourceClsid =
     { 0xd8761762, 0x5f50, 0x4d3c, { 0xae, 0x97, 0x15, 0xbb, 0x07, 0x90, 0x4d, 0x9e } };
 
-    const wchar_t* const kVirtualCameraFriendlyName = L"Morphly Virtual Camera";
-    const wchar_t* const kPublisherMappingName = L"Local\\MorphlyCam.FrameBuffer";
-    const wchar_t* const kPublisherMutexName = L"Local\\MorphlyCam.FrameMutex";
-    const wchar_t* const kPublisherEventName = L"Local\\MorphlyCam.FrameEvent";
-    const wchar_t* const kGlobalPublisherMappingName = L"Global\\MorphlyCam.FrameBuffer";
-    const wchar_t* const kGlobalPublisherMutexName = L"Global\\MorphlyCam.FrameMutex";
-    const wchar_t* const kGlobalPublisherEventName = L"Global\\MorphlyCam.FrameEvent";
-    const wchar_t* const kMfPublisherBridgeDirectoryPath = L"C:\\Users\\Public\\Documents\\MorphlyG1";
-    const wchar_t* const kMfPublisherBridgeFilePath = L"C:\\Users\\Public\\Documents\\MorphlyG1\\mf-bridge.bin";
+    const wchar_t* const kVirtualCameraFriendlyName = L"Vixy Virtual Camera";
+    const wchar_t* const kPublisherMappingName = L"Local\\VixyCam.FrameBuffer";
+    const wchar_t* const kPublisherMutexName = L"Local\\VixyCam.FrameMutex";
+    const wchar_t* const kPublisherEventName = L"Local\\VixyCam.FrameEvent";
+    const wchar_t* const kGlobalPublisherMappingName = L"Global\\VixyCam.FrameBuffer";
+    const wchar_t* const kGlobalPublisherMutexName = L"Global\\VixyCam.FrameMutex";
+    const wchar_t* const kGlobalPublisherEventName = L"Global\\VixyCam.FrameEvent";
+    const wchar_t* const kMfPublisherBridgeDirectoryPath = L"C:\\Users\\Public\\Documents\\VixyG1";
+    const wchar_t* const kMfPublisherBridgeFilePath = L"C:\\Users\\Public\\Documents\\VixyG1\\mf-bridge.bin";
 }

@@ -2,16 +2,10 @@ import { Link } from 'react-router-dom';
 import {
   ArrowRight,
   BadgeCheck,
-  Bot,
-  Code2,
-  CreditCard,
-  Database,
   Download,
-  Gauge,
-  KeyRound,
-  Layers3,
-  LockKeyhole,
-  MonitorDown,
+  Film,
+  Mic2,
+  MonitorPlay,
   RadioTower,
   ShieldCheck,
   Sparkles,
@@ -23,46 +17,40 @@ import { Button } from '@/components/ui/button';
 
 const windowsDownloadUrl = import.meta.env.VITE_WINDOWS_DOWNLOAD_URL || '#';
 
-const productHighlights = [
+const highlights = [
   {
     icon: Webcam,
-    title: 'Virtual camera output',
-    copy: 'Route your AI-enhanced feed into Zoom, OBS, Meet, Teams, Discord, and streaming tools that accept a webcam device.',
+    title: 'Show up as a camera',
+    copy: 'Use Vixy as a virtual camera in the apps people already use for meetings, classes, streams, and recordings.',
   },
   {
     icon: Wand2,
-    title: 'Realtime transformations',
-    copy: 'Use image-guided or prompt-guided looks while keeping a live preview and session controls close at hand.',
+    title: 'Change your live look',
+    copy: 'Create a polished visual style for demos, creator content, remote work, or social calls without rebuilding your setup.',
   },
   {
-    icon: Bot,
-    title: 'Voice tools included',
-    copy: 'VixyVC prepares the optional voice workflow and keeps local audio controls beside the camera studio.',
+    icon: Mic2,
+    title: 'Keep audio close',
+    copy: 'Camera and voice controls live together, so your setup feels like one studio instead of scattered tools.',
   },
   {
     icon: ShieldCheck,
-    title: 'Account gated sessions',
-    copy: 'Mongo-backed auth, wallet state, and admin access keep the app ready for paid credits and managed users.',
+    title: 'Built for real sessions',
+    copy: 'Start, monitor, and stop live sessions with clear status messages and a focused desktop workflow.',
   },
 ];
 
-const workflow = [
-  'Install Vixy Desktop on Windows.',
-  'Choose your real camera and microphone.',
-  'Start a realtime Vixy session with your selected style.',
-  'Select Vixy Virtual Camera inside your meeting or streaming app.',
+const steps = [
+  'Download and install Vixy Desktop.',
+  'Choose your camera and microphone.',
+  'Start your AI camera session.',
+  'Select Vixy Virtual Camera in your call or streaming app.',
 ];
 
-const adminItems = [
-  'Admin login uses ADMIN_EMAIL and ADMIN_PASSWORD from Render environment variables.',
-  'User, wallet, transaction, usage, and error collections are stored in MongoDB Atlas through Mongoose.',
-  'Payment and package screens are ready for the Flutterwave Mongo reconnect step.',
-];
-
-const developerItems = [
-  'MORPHLY_API_KEY stays server-side only.',
-  'The browser calls your own /api/morphly-token route, not the Morphly key directly.',
-  'APP_ORIGIN should match the public Render URL so provider-side origin checks are predictable.',
+const useCases = [
+  ['Creators', 'Film reels, tutorials, livestreams, and short-form content with a more distinctive on-camera style.'],
+  ['Remote teams', 'Bring a cleaner, more intentional camera look into standups, sales calls, and demos.'],
+  ['Educators', 'Create clearer lessons, walkthroughs, and recorded explanations without a studio setup.'],
 ];
 
 export default function Landing() {
@@ -70,7 +58,7 @@ export default function Landing() {
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <section className="border-b border-border bg-[radial-gradient(circle_at_20%_10%,hsl(var(--primary)/.16),transparent_30%),radial-gradient(circle_at_85%_5%,hsl(var(--accent)/.28),transparent_28%)]">
+      <section className="border-b border-border bg-[radial-gradient(circle_at_18%_8%,hsl(var(--primary)/.16),transparent_28%),radial-gradient(circle_at_82%_4%,hsl(var(--accent)/.24),transparent_30%)]">
         <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-5 py-6 lg:px-8">
           <header className="flex items-center justify-between gap-4">
             <Link to="/" className="flex items-center gap-3" aria-label="Vixy home">
@@ -83,9 +71,9 @@ export default function Landing() {
               </div>
             </Link>
             <nav className="hidden items-center gap-5 text-sm text-muted-foreground md:flex">
-              <a href="#workflow" className="hover:text-foreground">Workflow</a>
-              <a href="#developer" className="hover:text-foreground">Developer</a>
-              <a href="#admin" className="hover:text-foreground">Admin</a>
+              <a href="#features" className="hover:text-foreground">Features</a>
+              <a href="#how-it-works" className="hover:text-foreground">How it works</a>
+              <a href="#use-cases" className="hover:text-foreground">Use cases</a>
               <a href="#faq" className="hover:text-foreground">FAQ</a>
             </nav>
             <div className="flex items-center gap-2">
@@ -102,19 +90,19 @@ export default function Landing() {
             <div className="max-w-3xl">
               <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1 text-sm text-muted-foreground shadow-premium">
                 <Sparkles className="size-4 text-primary" aria-hidden="true" />
-                Realtime AI video for calls, streams, demos, and creator work
+                Realtime AI video for calls, streams, and creator work
               </p>
               <h1 className="max-w-3xl text-5xl font-semibold leading-[1.02] tracking-tight text-foreground sm:text-6xl lg:text-7xl">
-                A premium AI camera studio for your live presence.
+                Your live camera, upgraded with AI.
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-                Vixy gives users a downloadable Windows app, a virtual camera device, account-based access, Morphly realtime integration, and a clean admin path for running the product from Render with MongoDB Atlas.
+                Vixy turns your webcam into a premium AI camera studio. Install the Windows app, create your look, and use the Vixy Virtual Camera anywhere you already go live.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Button asChild size="lg" className="gap-2">
                   <a href={windowsDownloadUrl} aria-disabled={!downloadReady}>
                     <Download className="size-4" aria-hidden="true" />
-                    Download Vixy for Windows
+                    Download for Windows
                   </a>
                 </Button>
                 <Button asChild size="lg" variant="outline" className="gap-2">
@@ -126,14 +114,14 @@ export default function Landing() {
               </div>
               {!downloadReady && (
                 <p className="mt-3 text-sm text-muted-foreground">
-                  Add VITE_WINDOWS_DOWNLOAD_URL after your first GitHub Windows release is uploaded.
+                  Windows download will be available after the first public Vixy release.
                 </p>
               )}
               <div className="mt-10 grid max-w-2xl gap-3 sm:grid-cols-3">
                 {[
-                  ['Windows desktop', 'Vixy-Setup.exe'],
-                  ['Database', 'MongoDB Atlas'],
-                  ['Payments', 'Flutterwave ready'],
+                  ['Works with', 'calls and streams'],
+                  ['Output', 'virtual camera'],
+                  ['Made for', 'Windows desktop'],
                 ].map(([label, value]) => (
                   <div key={label} className="rounded-lg border border-border bg-card/75 p-4">
                     <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
@@ -148,21 +136,21 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
+      <section id="features" className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
         <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">What users get</p>
-            <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">One app for camera, style, voice, wallet, and streaming setup.</h2>
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Features</p>
+            <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">Everything you need to look sharper live.</h2>
           </div>
           <Button asChild variant="outline" className="w-fit gap-2">
             <Link to="/login">
-              Open dashboard
+              Open Vixy
               <ArrowRight className="size-4" aria-hidden="true" />
             </Link>
           </Button>
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {productHighlights.map((item) => (
+          {highlights.map((item) => (
             <article key={item.title} className="rounded-lg border border-border bg-card p-5 shadow-premium">
               <item.icon className="size-6 text-primary" aria-hidden="true" />
               <h3 className="mt-5 text-lg font-semibold">{item.title}</h3>
@@ -172,17 +160,17 @@ export default function Landing() {
         </div>
       </section>
 
-      <section id="workflow" className="border-y border-border bg-card/35">
+      <section id="how-it-works" className="border-y border-border bg-card/35">
         <div className="mx-auto grid max-w-7xl gap-10 px-5 py-16 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Workflow</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">From installer to live virtual camera in minutes.</h2>
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">How it works</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">From install to live camera in minutes.</h2>
             <p className="mt-4 text-sm leading-6 text-muted-foreground">
-              The landing page is built to drive downloads first, while signed-in users get the full Vixy dashboard for sessions, wallet, settings, and account actions.
+              Vixy is designed to feel familiar: pick your devices, start your session, then select Vixy wherever you normally choose a webcam.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            {workflow.map((step, index) => (
+            {steps.map((step, index) => (
               <div key={step} className="rounded-lg border border-border bg-background p-5">
                 <span className="flex size-9 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">{index + 1}</span>
                 <p className="mt-5 text-base font-semibold">{step}</p>
@@ -192,37 +180,36 @@ export default function Landing() {
         </div>
       </section>
 
-      <section id="developer" className="mx-auto grid max-w-7xl gap-8 px-5 py-16 lg:grid-cols-2 lg:px-8">
-        <InfoPanel
-          icon={Code2}
-          eyebrow="Developer API"
-          title="Morphly integration stays behind your backend."
-          body="Vixy uses a server route for realtime Morphly session creation. Users never receive your Morphly developer key, and Render owns the server-side environment."
-          items={developerItems}
-        />
-        <InfoPanel
-          icon={Database}
-          eyebrow="MongoDB Atlas"
-          title="No Supabase dependency in the active app path."
-          body="Auth, users, wallet state, telemetry, password reset codes, and admin checks are wired through the Mongo/Mongoose layer added for Vixy."
-          items={[
-            'MONGODB_URI connects Render to Atlas.',
-            'JWT_SECRET signs Vixy auth tokens.',
-            'Password reset uses OTP-style backend actions.',
-          ]}
-        />
+      <section id="use-cases" className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
+        <div className="mb-8">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Use cases</p>
+          <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">A camera upgrade for the places you already show up.</h2>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {useCases.map(([title, copy]) => (
+            <article key={title} className="rounded-lg border border-border bg-card p-6 shadow-premium">
+              <Film className="size-6 text-primary" aria-hidden="true" />
+              <h3 className="mt-5 text-lg font-semibold">{title}</h3>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">{copy}</p>
+            </article>
+          ))}
+        </div>
       </section>
 
-      <section id="admin" className="border-y border-border bg-card/35">
-        <div className="mx-auto grid max-w-7xl gap-8 px-5 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:px-8">
+      <section className="border-y border-border bg-card/35">
+        <div className="mx-auto grid max-w-7xl gap-8 px-5 py-16 lg:grid-cols-[1fr_0.9fr] lg:px-8">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Admin side</p>
-            <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">Run Vixy with an owner login, live user data, and Mongo-backed admin views.</h2>
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Desktop studio</p>
+            <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">A calm control room for your live look.</h2>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground">
-              The private admin page ships with the app build and signs in through the same Vixy backend. Keep admin credentials in Render, not in the browser.
+              Vixy keeps the important controls close: camera input, live preview, session status, voice tools, and output guidance. It is made for repeated use, not a one-time demo.
             </p>
             <ul className="mt-6 grid gap-3">
-              {adminItems.map((item) => (
+              {[
+                'Clear session status while your camera is live.',
+                'A virtual camera output designed for common video apps.',
+                'A focused dark interface that stays out of your way.',
+              ].map((item) => (
                 <li key={item} className="flex gap-3 rounded-lg border border-border bg-background p-4 text-sm text-muted-foreground">
                   <BadgeCheck className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
                   <span>{item}</span>
@@ -233,17 +220,17 @@ export default function Landing() {
           <div className="rounded-lg border border-border bg-background p-5 shadow-premium">
             <div className="flex items-center justify-between border-b border-border pb-4">
               <div>
-                <p className="text-sm font-semibold">Vixy Admin</p>
-                <p className="text-xs text-muted-foreground">Private control center</p>
+                <p className="text-sm font-semibold">Live setup</p>
+                <p className="text-xs text-muted-foreground">Camera, preview, output</p>
               </div>
-              <LockKeyhole className="size-5 text-primary" aria-hidden="true" />
+              <MonitorPlay className="size-5 text-primary" aria-hidden="true" />
             </div>
             <div className="mt-5 grid gap-3">
               {[
-                ['Users', 'Mongo profiles and roles'],
-                ['Wallets', 'Credits and transaction records'],
-                ['Logs', 'Error and telemetry collections'],
-                ['Releases', 'GitHub download links'],
+                ['Input', 'Your real camera'],
+                ['Preview', 'Live Vixy look'],
+                ['Output', 'Vixy Virtual Camera'],
+                ['Status', 'Ready for calls'],
               ].map(([label, value]) => (
                 <div key={label} className="flex items-center justify-between rounded-md border border-border bg-card px-4 py-3">
                   <span className="text-sm font-medium">{label}</span>
@@ -255,23 +242,15 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
-        <div className="grid gap-4 md:grid-cols-3">
-          <MiniPanel icon={CreditCard} title="Flutterwave" copy="Payment routes are parked for Mongo reconnection, with UI ready for packages and credit purchase flows." />
-          <MiniPanel icon={KeyRound} title="Server secrets" copy="Render stores Morphly, Mongo, admin, JWT, and payment secrets outside the client bundle." />
-          <MiniPanel icon={MonitorDown} title="Windows release" copy="Upload Vixy-Setup.exe to GitHub Releases and point VITE_WINDOWS_DOWNLOAD_URL at the asset." />
-        </div>
-      </section>
-
-      <section id="faq" className="mx-auto max-w-4xl px-5 pb-16 lg:px-8">
+      <section id="faq" className="mx-auto max-w-4xl px-5 py-16 lg:px-8">
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">FAQ</p>
-        <h2 className="mt-3 text-3xl font-semibold tracking-tight">Before you host</h2>
+        <h2 className="mt-3 text-3xl font-semibold tracking-tight">Questions before you start</h2>
         <div className="mt-6 grid gap-3">
           {[
-            ['Does Vixy include the virtual camera?', 'Yes. The app has been renamed to Vixy Virtual Camera and keeps the desktop virtual camera pipeline in the Electron app.'],
-            ['Where is the admin page?', 'The private admin files are copied into the build under /private/vixy/login. Admin API routes use Mongo-backed checks.'],
-            ['Can users download the EXE?', 'Yes. The landing page CTA uses VITE_WINDOWS_DOWNLOAD_URL. After building a Windows release, paste the GitHub release asset URL into Render.'],
-            ['Can I host on Render?', 'Yes. Use a Node Web Service from the GitHub repo, build the app, and start the Express server from the app folder.'],
+            ['Does Vixy create a virtual camera?', 'Yes. Vixy Desktop includes the Vixy Virtual Camera workflow for supported Windows setups.'],
+            ['Can I use it in meeting apps?', 'Yes. Once Vixy is running, choose Vixy Virtual Camera in the camera picker of your meeting or streaming app.'],
+            ['Do I need special hardware?', 'You need a Windows computer and a working camera. A stronger machine gives smoother realtime results.'],
+            ['Is the desktop app required?', 'Yes. The Windows app handles the local camera workflow and virtual camera output.'],
           ].map(([question, answer]) => (
             <article key={question} className="rounded-lg border border-border bg-card p-5">
               <h3 className="font-semibold">{question}</h3>
@@ -299,15 +278,15 @@ function ProductPreview() {
         <div className="grid gap-4 p-4 md:grid-cols-[0.78fr_1.22fr]">
           <div className="rounded-md border border-border bg-card p-3">
             <div className="flex items-center gap-2">
-              <Layers3 className="size-4 text-primary" aria-hidden="true" />
-              <span className="text-sm font-semibold">Session stack</span>
+              <Sparkles className="size-4 text-primary" aria-hidden="true" />
+              <span className="text-sm font-semibold">Studio stack</span>
             </div>
             <div className="mt-4 grid gap-3">
               {[
-                ['Camera', 'Logitech 1080p'],
-                ['Output', 'Vixy Virtual Camera'],
-                ['Voice', 'VixyVC standby'],
-                ['Wallet', 'Credits tracked'],
+                ['Camera', 'HD webcam'],
+                ['Look', 'Realtime style'],
+                ['Voice', 'Optional tools'],
+                ['Output', 'Virtual camera'],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-md bg-background px-3 py-2">
                   <p className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground">{label}</p>
@@ -319,7 +298,7 @@ function ProductPreview() {
           <div className="min-h-[320px] rounded-md border border-border bg-[linear-gradient(135deg,hsl(var(--muted)),hsl(var(--background))_52%,hsl(var(--accent)/.5))] p-4">
             <div className="flex h-full flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold text-primary">Live engine ready</span>
+                <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold text-primary">Camera ready</span>
                 <RadioTower className="size-5 text-primary" aria-hidden="true" />
               </div>
               <div className="mx-auto flex aspect-square w-40 items-center justify-center rounded-full border border-primary/40 bg-background/70">
@@ -327,8 +306,8 @@ function ProductPreview() {
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center justify-between rounded-md border border-border bg-background/85 px-3 py-2 text-xs">
-                  <span>Frame monitor</span>
-                  <span className="text-primary">healthy</span>
+                  <span>Output</span>
+                  <span className="text-primary">Vixy Virtual Camera</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <span className="h-2 rounded-full bg-primary" />
@@ -341,46 +320,5 @@ function ProductPreview() {
         </div>
       </div>
     </div>
-  );
-}
-
-function InfoPanel({
-  icon: Icon,
-  eyebrow,
-  title,
-  body,
-  items,
-}: {
-  icon: typeof Code2;
-  eyebrow: string;
-  title: string;
-  body: string;
-  items: string[];
-}) {
-  return (
-    <article className="rounded-lg border border-border bg-card p-6 shadow-premium">
-      <Icon className="size-7 text-primary" aria-hidden="true" />
-      <p className="mt-5 text-sm font-semibold uppercase tracking-[0.2em] text-primary">{eyebrow}</p>
-      <h2 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h2>
-      <p className="mt-4 text-sm leading-6 text-muted-foreground">{body}</p>
-      <ul className="mt-6 grid gap-3">
-        {items.map((item) => (
-          <li key={item} className="flex gap-3 text-sm text-muted-foreground">
-            <Gauge className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-            <span>{item}</span>
-          </li>
-        ))}
-      </ul>
-    </article>
-  );
-}
-
-function MiniPanel({ icon: Icon, title, copy }: { icon: typeof CreditCard; title: string; copy: string }) {
-  return (
-    <article className="rounded-lg border border-border bg-card p-5 shadow-premium">
-      <Icon className="size-6 text-primary" aria-hidden="true" />
-      <h3 className="mt-5 text-lg font-semibold">{title}</h3>
-      <p className="mt-3 text-sm leading-6 text-muted-foreground">{copy}</p>
-    </article>
   );
 }

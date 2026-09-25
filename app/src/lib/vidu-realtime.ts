@@ -1,4 +1,4 @@
-﻿import { VIDU_REALTIME_MODEL } from './realtime-provider';
+import { VIDU_REALTIME_MODEL } from './realtime-provider';
 import type { RtcEngine } from 'aliyun-rtc-sdk';
 
 export type ViduConnectionState = 'connecting' | 'connected' | 'generating' | 'disconnected' | 'reconnecting';
@@ -6,7 +6,7 @@ export interface ViduTransformInput {
   prompt?: string;
   enhance?: boolean;
   image?: Blob | string | null;
-  editingType?: 'style_transfer' | 'subject_replacement' | 'background_replacement' | 'virtual_tryon';
+  editingType?: 'subject_replacement';
 }
 export interface ViduClientOptions {
   apiKey?: string;
@@ -238,7 +238,7 @@ export class ViduRealtimeClient {
           if (!image && !input.editingType) return;
           send(13, { switch_prompt: {
             ...(image ? { prompts: [{ type: 'image', content: image }] } : {}),
-            ...(input.editingType ? { editing_type: input.editingType } : {}),
+            editing_type: 'subject_replacement',
           } });
         },
         disconnect: async () => { await cleanup(); state = 'disconnected'; },

@@ -83,8 +83,11 @@ test('Vidu uses scoped signaling credentials and displays only the renderer, the
   h.events.get('videoSubscribeStateChanged')('renderer', 2, 3);
   const session = await connected;
   assert.equal(h.outputs[0].getVideoTracks()[0], h.generated);
-  await session.set({ image: 'https://example.com/new.png' });
+  await session.set({ image: 'https://example.com/new.png', editingType: 'background_replacement' });
   assert.equal(h.sent[1].type, 13);
+  assert.equal(h.sent[1].payload.switch_prompt.editing_type, 'subject_replacement');
+  assert.equal(h.sent[1].live_id, 'live-id');
+  assert.equal(h.sent[1].conn_id, 'connection-id');
   assert.equal(h.sent[1].payload.switch_prompt.prompts[0].content, 'https://example.com/new.png');
   await session.disconnect();
   await session.disconnect();

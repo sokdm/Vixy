@@ -158,7 +158,6 @@ export async function createViduTemporaryKey({
   sessionId,
   installationId,
   imageUrl,
-  editingType,
 }) {
   const sessionLimit = Math.max(1, Math.min(Math.floor(Number(maxSeconds) || 1), 120));
   const baseUrl = getViduApiBaseUrl();
@@ -177,9 +176,6 @@ export async function createViduTemporaryKey({
   if (!/^(https?:\/\/|data:image\/(png|jpeg|webp);base64,|ssupload:)/i.test(effectiveImageUrl) || effectiveImageUrl.length > 3_000_000) {
     return { error: { error: 'INVALID_REFERENCE_IMAGE', details: 'Choose a reference image under 2 MB for Pro.' } };
   }
-  if (editingType && !['subject_replacement', 'style_transfer', 'background_replacement', 'virtual_tryon'].includes(editingType)) {
-    return { error: { error: 'INVALID_EDITING_TYPE', details: 'Unsupported Pro editing scenario.' } };
-  }
 
   for (let attempt = 1; attempt <= VIDU_TOKEN_MAX_ATTEMPTS; attempt += 1) {
     try {
@@ -191,7 +187,7 @@ export async function createViduTemporaryKey({
         },
         body: JSON.stringify({
           image_url: effectiveImageUrl,
-          editing_type: editingType || 'subject_replacement',
+          editing_type: 'subject_replacement',
         }),
         signal: AbortSignal.timeout(15000),
       });
@@ -295,7 +291,6 @@ async function createProviderTemporaryCredential({
   sessionId,
   installationId,
   imageUrl,
-  editingType,
 }) {
   if (provider === 'vidu' || provider === 'decart') {
     return createViduTemporaryKey({
@@ -305,7 +300,6 @@ async function createProviderTemporaryCredential({
       sessionId,
       installationId,
       imageUrl,
-      editingType,
     });
   }
 
@@ -545,7 +539,6 @@ export default async function handler(req, res) {
         sessionId,
         installationId: 'local_preview',
         imageUrl: req.body?.imageUrl || req.body?.image_url || req.body?.referenceImage,
-        editingType: req.body?.editingType,
       });
 
       if (providerSession.error) {
@@ -725,7 +718,6 @@ export default async function handler(req, res) {
       sessionId: newSession.id,
       installationId,
       imageUrl: req.body?.imageUrl || req.body?.image_url || req.body?.referenceImage,
-      editingType: req.body?.editingType,
     });
     const providerCredentialMs = Date.now() - providerCredentialStartedAt;
     if (providerSession.error) {

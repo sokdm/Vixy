@@ -1,5 +1,6 @@
 // @ts-nocheck
 import crypto from 'node:crypto';
+import nodemailer from 'nodemailer';
 import {
   connectMongo,
   hashPassword,
@@ -16,6 +17,51 @@ function makeCode() {
 
 function makeToken() {
   return crypto.randomBytes(32).toString('base64url');
+}
+
+function getSmtpConfig() {
+  const host = String(process.env.SMTP_HOST || '').trim();
+  const user = String(process.env.SMTP_USER || '').trim();
+  const pass = String(process.env.SMTP_PASS || '').trim();
+  const from = String(process.env.SMTP_FROM || process.env.MAIL_FROM || '').trim();
+  const port = Number(process.env.SMTP_PORT || 587);
+  const secure = String(process.env.SMTP_SECURE || '').toLowerCase() === 'true' || port === 465;
+
+  if (!host || !user || !pass || !from) return null;
+  return { host, port, secure, auth: { user, pass }, from };
+}
+
+async function sendPasswordResetCode(email, code) {
+  const smtp = getSmtpConfig();
+  if (!smtp) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.info(`[password-reset] Vixy reset code for ${email}: ${code}`);
+      return;
+    }
+    throw new Error('Password reset email is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, and SMTP_FROM.');
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: smtp.host,
+    port: smtp.port,
+    secure: smtp.secure,
+    auth: smtp.auth,
+  });
+
+  await transporter.sendMail({
+    from: smtp.from,
+    to: email,
+    subject: 'Your Vixy password reset code',
+    text: `Your Vixy password reset code is ${code}. It expires in 15 minutes. If you did not request this, ignore this email.`,
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.5;color:#111827">
+        <h2>Your Vixy reset code</h2>
+        <p>Use this code to reset your password:</p>
+        <p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p>
+        <p>This code expires in 15 minutes. If you did not request this, you can ignore this email.</p>
+      </div>
+    `,
+  });
 }
 
 export default async function handler(req, res) {
@@ -41,8 +87,7 @@ export default async function handler(req, res) {
           userId: String(user._id),
           expiresAt: Date.now() + 15 * 60 * 1000,
         });
-        // TODO: send with Nodemailer once SMTP env values are provided.
-        console.info(`[password-reset] Vixy reset code for ${email}: ${code}`);
+        await sendPasswordResetCode(email, code);
       }
       return res.json({ ok: true });
     }

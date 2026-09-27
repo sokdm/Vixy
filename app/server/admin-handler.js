@@ -39,11 +39,25 @@ async function handleAdminOverview(req, res) {
     TransactionModel.find().sort({ createdAt: -1 }).limit(20).lean(),
     ErrorLogModel.find().sort({ lastSeenAt: -1 }).limit(20).lean(),
   ]);
+  const blockedUsers = await UserModel.countDocuments({ accountStatus: 'suspended' });
+  const totalCredits = wallets.reduce((sum, wallet) => sum + Number(wallet.credits || 0), 0);
+  const revenueNGN = transactions
+    .filter((transaction) => ['successful', 'success', 'completed', 'paid'].includes(String(transaction.status || '').toLowerCase()))
+    .reduce((sum, transaction) => sum + Number(transaction.amountNaira || 0), 0);
+  const activeSessions = sessions.filter((session) => String(session.status || '').toLowerCase() === 'active').length;
 
   return res.json({
+    totalUsers: users,
+    blockedUsers,
+    totalCredits,
+    revenueNGN,
+    activeSessions,
     totals: {
       users,
-      credits: wallets.reduce((sum, wallet) => sum + Number(wallet.credits || 0), 0),
+      blockedUsers,
+      credits: totalCredits,
+      revenueNGN,
+      activeSessions,
       sessions: sessions.length,
       transactions: transactions.length,
       errors: errors.length,

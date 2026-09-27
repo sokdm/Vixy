@@ -221,6 +221,26 @@ function formatCurrency(value: number) {
   return ngnFormatter.format(Number.isFinite(value) ? value : 0);
 }
 
+function numericValue(value: unknown, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function formatNumber(value: unknown) {
+  return numericValue(value).toLocaleString();
+}
+
+function normalizeOverview(data: any): AdminOverview {
+  const totals = data?.totals || {};
+  return {
+    totalUsers: numericValue(data?.totalUsers ?? totals.users),
+    blockedUsers: numericValue(data?.blockedUsers ?? totals.blockedUsers),
+    totalCredits: numericValue(data?.totalCredits ?? totals.credits),
+    revenueNGN: numericValue(data?.revenueNGN ?? totals.revenueNGN),
+    activeSessions: numericValue(data?.activeSessions ?? totals.activeSessions),
+  };
+}
+
 function formatDuration(totalSeconds: number) {
   const seconds = Math.max(0, Math.floor(Number(totalSeconds) || 0));
   const hours = Math.floor(seconds / 3600);
@@ -341,7 +361,7 @@ function AdminDashboard() {
 
       if (usersResult.status === 'fulfilled') setUsers(usersResult.value.users || []);
       if (packagesResult.status === 'fulfilled') setPackages(packagesResult.value.packages || []);
-      if (overviewResult.status === 'fulfilled') setOverview(overviewResult.value);
+      if (overviewResult.status === 'fulfilled') setOverview(normalizeOverview(overviewResult.value));
       if (auditResult.status === 'fulfilled') setAuditEntries(auditResult.value.entries || []);
       if (referralsResult.status === 'fulfilled') setReferralData(referralsResult.value);
       if (usageResult.status === 'fulfilled') setUsageData(usageResult.value);
@@ -406,21 +426,21 @@ function AdminDashboard() {
   const overviewCards = [
     {
       title: 'Total users',
-      value: overview.totalUsers.toLocaleString(),
+      value: formatNumber(overview.totalUsers),
       description: 'Registered accounts',
       icon: Users,
       iconClassName: 'bg-accent text-primary',
     },
     {
       title: 'Blocked',
-      value: overview.blockedUsers.toLocaleString(),
+      value: formatNumber(overview.blockedUsers),
       description: 'Restricted accounts',
       icon: Ban,
       iconClassName: 'bg-danger-soft text-destructive',
     },
     {
       title: 'Total credits',
-      value: overview.totalCredits.toLocaleString(),
+      value: formatNumber(overview.totalCredits),
       description: 'Wallet balance outstanding',
       icon: Coins,
       iconClassName: 'bg-success-soft text-success',
@@ -434,7 +454,7 @@ function AdminDashboard() {
     },
     {
       title: 'Active sessions',
-      value: overview.activeSessions.toLocaleString(),
+      value: formatNumber(overview.activeSessions),
       description: 'Currently consuming credits',
       icon: Activity,
       iconClassName: 'bg-accent text-primary',

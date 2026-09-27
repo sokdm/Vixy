@@ -11,6 +11,9 @@ import referralsHandler from './api/referrals.js';
 import morphlyTokenHandler from './api/morphly-token.js';
 import versionHandler from './api/version.js';
 import walletHandler from './api/wallet.js';
+import announcementsHandler from './api/announcements.js';
+import creditPackagesHandler from './api/credit-packages.js';
+import feedbackHandler from './api/feedback.js';
 import telemetryHandler, { errorLogHandler } from './api/telemetry.js';
 
 function pendingMongoHandler(feature) {
@@ -27,8 +30,8 @@ function pendingMongoHandler(feature) {
 }
 
 const routeHandlers = {
-  feedback: pendingMongoHandler('Customer feedback'),
-  announcements: pendingMongoHandler('Announcements'),
+  feedback: feedbackHandler,
+  announcements: announcementsHandler,
   'admin-engagement': pendingMongoHandler('Admin engagement'),
   'email-preferences': pendingMongoHandler('Email preferences'),
   'engagement-cron': pendingMongoHandler('Engagement cron'),
@@ -43,7 +46,7 @@ const routeHandlers = {
   'admin-transactions': createAdminHandler('transactions'),
   'admin-usage': createAdminHandler('usage'),
   'admin-logs': createAdminHandler('logs'),
-  'credit-packages': pendingMongoHandler('Credit packages'),
+  'credit-packages': creditPackagesHandler,
   'end-session': pendingMongoHandler('Realtime session billing'),
   'ensure-user-wallet': ensureUserWalletHandler,
   'flutterwave-webhook': pendingMongoHandler('Flutterwave webhooks'),

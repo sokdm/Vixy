@@ -90,12 +90,42 @@ const errorLogSchema = new mongoose.Schema({
   metadata: { type: Object, default: {} },
 }, { timestamps: true });
 
+const announcementSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  message: { type: String, required: true },
+  kind: { type: String, enum: ['update', 'maintenance'], default: 'update' },
+  startsAt: { type: Date, default: Date.now },
+  endsAt: { type: Date, default: null },
+  revision: { type: Number, default: 1 },
+  isActive: { type: Boolean, default: true },
+}, { timestamps: true });
+
+const feedbackSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
+  email: { type: String, default: '' },
+  category: { type: String, default: 'experience' },
+  rating: { type: Number, default: null },
+  message: { type: String, required: true },
+  requestId: { type: String, index: true },
+}, { timestamps: true });
+
+const creditPackageSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  credits: { type: Number, required: true },
+  priceNGN: { type: Number, required: true },
+  isActive: { type: Boolean, default: true },
+  sortOrder: { type: Number, default: 0 },
+}, { timestamps: true });
+
 export const UserModel = mongoose.models.User || mongoose.model('User', userSchema);
 export const WalletModel = mongoose.models.Wallet || mongoose.model('Wallet', walletSchema);
 export const TransactionModel = mongoose.models.Transaction || mongoose.model('Transaction', transactionSchema);
 export const SessionModel = mongoose.models.Session || mongoose.model('Session', sessionSchema);
 export const AnalyticsEventModel = mongoose.models.AnalyticsEvent || mongoose.model('AnalyticsEvent', analyticsEventSchema);
 export const ErrorLogModel = mongoose.models.ErrorLog || mongoose.model('ErrorLog', errorLogSchema);
+export const AnnouncementModel = mongoose.models.Announcement || mongoose.model('Announcement', announcementSchema);
+export const FeedbackModel = mongoose.models.Feedback || mongoose.model('Feedback', feedbackSchema);
+export const CreditPackageModel = mongoose.models.CreditPackage || mongoose.model('CreditPackage', creditPackageSchema);
 
 function getSessionSecret() {
   return String(process.env.JWT_SECRET || process.env.SESSION_SECRET || '').trim();

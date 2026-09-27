@@ -2,6 +2,7 @@
 import { requireAdminContext } from '../../shared/admin-auth.js';
 import {
   AnalyticsEventModel,
+  CreditPackageModel,
   connectMongo,
   ErrorLogModel,
   SessionModel,
@@ -132,6 +133,52 @@ async function handleNotReady(req, res) {
   return res.json({ items: [], message: 'This Vixy admin section is ready for Mongo-backed data.' });
 }
 
+function serializeCreditPackage(item) {
+  return {
+    id: String(item._id),
+    name: item.name,
+    credits: Number(item.credits || 0),
+    priceNGN: Number(item.priceNGN || 0),
+    isActive: item.isActive !== false,
+    sortOrder: Number(item.sortOrder || 0),
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+  };
+}
+
+async function handleAdminCreditPackages(req, res) {
+  const admin = await requireAdmin(req, res);
+  if (!admin) return;
+
+  if (req.method === 'GET') {
+    const packages = await CreditPackageModel.find().sort({ sortOrder: 1, createdAt: 1 }).lean();
+    return res.json({ packages: packages.map(serializeCreditPackage) });
+  }
+
+  if (req.method === 'POST' || req.method === 'PUT') {
+    const id = req.body?.id || req.body?.packageId;
+    const update = {
+      name: String(req.body?.name || '').trim(),
+      credits: Number(req.body?.credits || 0),
+      priceNGN: Number(req.body?.priceNGN ?? req.body?.price_ngn ?? 0),
+      isActive: req.body?.isActive ?? req.body?.is_active ?? true,
+      sortOrder: Number(req.body?.sortOrder ?? req.body?.sort_order ?? 0),
+    };
+
+    if (!update.name) return res.status(400).json({ error: 'Package name is required' });
+    if (update.credits <= 0) return res.status(400).json({ error: 'Credits must be greater than zero' });
+    if (update.priceNGN < 0) return res.status(400).json({ error: 'Price must be zero or greater' });
+
+    const saved = id
+      ? await CreditPackageModel.findByIdAndUpdate(id, { $set: update }, { new: true, upsert: false })
+      : await CreditPackageModel.create(update);
+
+    return res.json({ package: serializeCreditPackage(saved) });
+  }
+
+  return methodNotAllowed(res);
+}
+
 const ADMIN_ROUTE_CONFIG = {
   me: { methods: ['GET'], handler: handleAdminMe },
   overview: { methods: ['GET'], handler: handleAdminOverview },
@@ -139,7 +186,7 @@ const ADMIN_ROUTE_CONFIG = {
   transactions: { methods: ['GET'], handler: handleAdminTransactions },
   usage: { methods: ['GET'], handler: handleAdminUsage },
   logs: { methods: ['GET'], handler: handleAdminLogs },
-  'credit-packages': { methods: ['GET', 'POST', 'PUT'], handler: handleNotReady },
+  'credit-packages': { methods: ['GET', 'POST', 'PUT'], handler: handleAdminCreditPackages },
   'audit-log': { methods: ['GET'], handler: handleNotReady },
   referrals: { methods: ['GET', 'POST'], handler: handleNotReady },
 };

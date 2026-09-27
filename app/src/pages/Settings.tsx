@@ -704,10 +704,10 @@ function Settings() {
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label className="text-sm font-medium text-foreground">WhatsApp</Label>
-                <p className="text-xs text-muted-foreground">+234 703 819 5038</p>
+                <p className="text-xs text-muted-foreground">08136098063</p>
               </div>
               <Button
-                onClick={() => { window.open('https://wa.me/2347038195038', '_blank'); }}
+                onClick={() => { window.open('https://wa.me/2348136098063', '_blank'); }}
                 variant="outline"
                 className="border-border text-muted-foreground hover:text-foreground hover:bg-background"
               >

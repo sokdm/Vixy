@@ -30,6 +30,7 @@ const isDevelopment = process.env.MORPHLY_DESKTOP_DEV === '1'
   || (!app.isPackaged && process.env.NODE_ENV !== 'production');
 const isPackagedRuntime = app.isPackaged && !isDevelopment;
 const RELEASES_URL = process.env.VIXY_RELEASES_URL || 'https://github.com/sokdm/vixy/releases';
+const DESKTOP_START_ROUTE = '#/login';
 const VIXY_CAM_WINDOW_NAME = 'Vixy cam';
 const VIXY_CAM_WINDOW_WIDTH = 640;
 const VIXY_CAM_WINDOW_HEIGHT = 360;
@@ -891,7 +892,8 @@ function resolveUpdateManifestUrl() {
 }
 
 function resolveRendererDevUrl() {
-  return process.env.ELECTRON_RENDERER_URL || 'http://localhost:5173';
+  const baseUrl = process.env.ELECTRON_RENDERER_URL || 'http://localhost:5173';
+  return baseUrl.includes('#') ? baseUrl : `${baseUrl.replace(/\/$/, '')}/${DESKTOP_START_ROUTE}`;
 }
 
 function buildLoadFailureHtml(failedUrl, errorCode, errorDescription) {
@@ -1147,7 +1149,7 @@ function createWindow() {
     void mainWindow.loadURL(resolveRendererDevUrl());
   } else {
     const packagedIndexHtml = path.resolve(app.getAppPath(), 'dist', 'index.html');
-    void mainWindow.loadFile(packagedIndexHtml);
+    void mainWindow.loadFile(packagedIndexHtml, { hash: DESKTOP_START_ROUTE.slice(1) });
   }
 }
 

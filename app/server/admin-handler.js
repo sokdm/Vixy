@@ -126,11 +126,112 @@ async function handleAdminUsage(req, res) {
   const admin = await requireAdmin(req, res);
   if (!admin) return;
   if (req.method !== 'GET') return methodNotAllowed(res);
-  const [sessions, events] = await Promise.all([
+  const [sessions, events, users, wallets] = await Promise.all([
     SessionModel.find().sort({ createdAt: -1 }).limit(250).lean(),
     AnalyticsEventModel.find().sort({ createdAt: -1 }).limit(250).lean(),
+    UserModel.find().sort({ createdAt: -1 }).limit(250).lean(),
+    WalletModel.find().lean(),
   ]);
-  return res.json({ sessions, events });
+  const walletByUser = new Map(wallets.map((wallet) => [String(wallet.userId), wallet]));
+  const sessionsByUser = new Map();
+  for (const session of sessions) {
+    const userId = String(session.userId || 'unknown');
+    const current = sessionsByUser.get(userId) || {
+      userId,
+      email: 'Unknown user',
+      isAdmin: false,
+      walletCredits: 0,
+      explainedCreditGrants: 0,
+      unexplainedBalanceCredits: 0,
+      sessions: 0,
+      activeSessions: 0,
+      tokenMints: 0,
+      auditedTokenMints: 0,
+      recordedSeconds: 0,
+      recordedCredits: 0,
+      untrackedExposureSeconds: 0,
+      untrackedExposureCredits: 0,
+      installationIds: [],
+      installationCount: 0,
+      suspicious: false,
+      suspiciousReasons: [],
+      lastActivityAt: null,
+    };
+    const status = String(session.status || '').toLowerCase();
+    current.sessions += 1;
+    if (status === 'active') current.activeSessions += 1;
+    current.recordedCredits += Number(session.creditsSpent || 0);
+    const startedAt = session.startedAt ? new Date(session.startedAt).getTime() : 0;
+    const endedAt = session.endedAt ? new Date(session.endedAt).getTime() : Date.now();
+    if (startedAt && endedAt > startedAt) current.recordedSeconds += Math.floor((endedAt - startedAt) / 1000);
+    const lastActivity = session.updatedAt || session.endedAt || session.startedAt || session.createdAt;
+    if (lastActivity && (!current.lastActivityAt || new Date(lastActivity) > new Date(current.lastActivityAt))) {
+      current.lastActivityAt = new Date(lastActivity).toISOString();
+    }
+    sessionsByUser.set(userId, current);
+  }
+
+  for (const user of users) {
+    const userId = String(user._id);
+    const walletCredits = Number(walletByUser.get(userId)?.credits || 0);
+    const current = sessionsByUser.get(userId) || {
+      userId,
+      sessions: 0,
+      activeSessions: 0,
+      tokenMints: 0,
+      auditedTokenMints: 0,
+      recordedSeconds: 0,
+      recordedCredits: 0,
+      untrackedExposureSeconds: 0,
+      untrackedExposureCredits: 0,
+      installationIds: [],
+      installationCount: 0,
+      suspicious: false,
+      suspiciousReasons: [],
+      lastActivityAt: user.updatedAt?.toISOString?.() || user.createdAt?.toISOString?.() || null,
+    };
+    current.email = user.email || 'Unknown user';
+    current.isAdmin = user.role === 'admin';
+    current.walletCredits = walletCredits;
+    current.unexplainedBalanceCredits = walletCredits;
+    sessionsByUser.set(userId, current);
+  }
+
+  const usageUsers = [...sessionsByUser.values()].sort((a, b) => Number(b.recordedCredits || 0) - Number(a.recordedCredits || 0));
+  const totals = usageUsers.reduce((sum, item) => ({
+    users: sum.users + 1,
+    sessions: sum.sessions + Number(item.sessions || 0),
+    activeSessions: sum.activeSessions + Number(item.activeSessions || 0),
+    recordedSeconds: sum.recordedSeconds + Number(item.recordedSeconds || 0),
+    recordedCredits: sum.recordedCredits + Number(item.recordedCredits || 0),
+    untrackedExposureSeconds: sum.untrackedExposureSeconds + Number(item.untrackedExposureSeconds || 0),
+    untrackedExposureCredits: sum.untrackedExposureCredits + Number(item.untrackedExposureCredits || 0),
+    usersWithUsageGaps: sum.usersWithUsageGaps + (Number(item.untrackedExposureCredits || 0) > 0 ? 1 : 0),
+    auditedTokenMints: sum.auditedTokenMints + Number(item.auditedTokenMints || 0),
+  }), {
+    users: 0,
+    sessions: 0,
+    activeSessions: 0,
+    recordedSeconds: 0,
+    recordedCredits: 0,
+    untrackedExposureSeconds: 0,
+    untrackedExposureCredits: 0,
+    usersWithUsageGaps: 0,
+    auditedTokenMints: 0,
+  });
+
+  return res.json({
+    periodDays: 30,
+    since: null,
+    asOf: new Date().toISOString(),
+    totals,
+    users: usageUsers,
+    dataHealth: {
+      analyticsAvailable: events.length > 0,
+      walletLedgerAvailable: wallets.length > 0,
+      tokenAuditEnabled: false,
+    },
+  });
 }
 
 async function handleAdminLogs(req, res) {

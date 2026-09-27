@@ -241,6 +241,33 @@ function normalizeOverview(data: any): AdminOverview {
   };
 }
 
+function normalizeUsageData(data: any): AdminUsageData {
+  const totals = data?.totals || {};
+  const dataHealth = data?.dataHealth || {};
+  return {
+    periodDays: numericValue(data?.periodDays, 30),
+    since: data?.since || null,
+    asOf: data?.asOf || null,
+    totals: {
+      users: numericValue(totals.users),
+      sessions: numericValue(totals.sessions),
+      activeSessions: numericValue(totals.activeSessions),
+      recordedSeconds: numericValue(totals.recordedSeconds),
+      recordedCredits: numericValue(totals.recordedCredits),
+      untrackedExposureSeconds: numericValue(totals.untrackedExposureSeconds),
+      untrackedExposureCredits: numericValue(totals.untrackedExposureCredits),
+      usersWithUsageGaps: numericValue(totals.usersWithUsageGaps),
+      auditedTokenMints: numericValue(totals.auditedTokenMints),
+    },
+    users: Array.isArray(data?.users) ? data.users : [],
+    dataHealth: {
+      analyticsAvailable: Boolean(dataHealth.analyticsAvailable),
+      walletLedgerAvailable: Boolean(dataHealth.walletLedgerAvailable),
+      tokenAuditEnabled: Boolean(dataHealth.tokenAuditEnabled),
+    },
+  };
+}
+
 function formatDuration(totalSeconds: number) {
   const seconds = Math.max(0, Math.floor(Number(totalSeconds) || 0));
   const hours = Math.floor(seconds / 3600);
@@ -364,7 +391,7 @@ function AdminDashboard() {
       if (overviewResult.status === 'fulfilled') setOverview(normalizeOverview(overviewResult.value));
       if (auditResult.status === 'fulfilled') setAuditEntries(auditResult.value.entries || []);
       if (referralsResult.status === 'fulfilled') setReferralData(referralsResult.value);
-      if (usageResult.status === 'fulfilled') setUsageData(usageResult.value);
+      if (usageResult.status === 'fulfilled') setUsageData(normalizeUsageData(usageResult.value));
 
       const failedSections = [
         usersResult.status === 'rejected' ? 'users' : null,

@@ -230,6 +230,32 @@ function formatNumber(value: unknown) {
   return numericValue(value).toLocaleString();
 }
 
+function normalizeUsers(data: any): AdminUserRecord[] {
+  const rows = Array.isArray(data?.users) ? data.users : [];
+  return rows.map((user: any) => ({
+    id: String(user?.id ?? user?._id ?? ''),
+    email: String(user?.email || 'Unknown user'),
+    name: String(user?.name || ''),
+    createdAt: user?.createdAt || null,
+    lastSignInAt: user?.lastSignInAt || user?.updatedAt || null,
+    credits: numericValue(user?.credits),
+    isAdmin: Boolean(user?.isAdmin ?? user?.role === 'admin'),
+    adminRole: user?.adminRole ?? (user?.role === 'admin' ? 'admin' : null),
+  })).filter((user: AdminUserRecord) => user.id);
+}
+
+function normalizeCreditPackages(data: any): CreditPackage[] {
+  const rows = Array.isArray(data?.packages) ? data.packages : [];
+  return rows.map((pkg: any) => ({
+    id: String(pkg?.id ?? pkg?._id ?? ''),
+    name: String(pkg?.name || ''),
+    credits: numericValue(pkg?.credits),
+    priceNGN: numericValue(pkg?.priceNGN ?? pkg?.price_ngn),
+    isActive: pkg?.isActive ?? pkg?.is_active ?? true,
+    sortOrder: numericValue(pkg?.sortOrder ?? pkg?.sort_order),
+  })).filter((pkg: CreditPackage) => pkg.id || pkg.name);
+}
+
 function normalizeOverview(data: any): AdminOverview {
   const totals = data?.totals || {};
   return {
@@ -238,6 +264,46 @@ function normalizeOverview(data: any): AdminOverview {
     totalCredits: numericValue(data?.totalCredits ?? totals.credits),
     revenueNGN: numericValue(data?.revenueNGN ?? totals.revenueNGN),
     activeSessions: numericValue(data?.activeSessions ?? totals.activeSessions),
+  };
+}
+
+function normalizeReferralRecord(entry: any): AdminReferralRecord {
+  const status = ['registered', 'qualified', 'rewarded', 'disqualified'].includes(entry?.status)
+    ? entry.status
+    : 'registered';
+  return {
+    id: String(entry?.id ?? entry?._id ?? ''),
+    referralCodeUsed: String(entry?.referralCodeUsed || entry?.referral_code_used || ''),
+    referrerEmail: String(entry?.referrerEmail || entry?.referrer_email || 'Unknown referrer'),
+    referrerCode: entry?.referrerCode ?? entry?.referrer_code ?? null,
+    referredEmail: String(entry?.referredEmail || entry?.referred_email || 'Unknown referred user'),
+    status,
+    registeredAt: entry?.registeredAt || entry?.registered_at || entry?.createdAt || null,
+    rewardedAt: entry?.rewardedAt || entry?.rewarded_at || null,
+    disqualificationReason: entry?.disqualificationReason || entry?.disqualification_reason || null,
+    refundWarning: Boolean(entry?.refundWarning ?? entry?.refund_warning),
+    suspicious: Boolean(entry?.suspicious),
+    suspiciousReason: entry?.suspiciousReason || entry?.suspicious_reason || null,
+    firstQualifyingPurchase: entry?.firstQualifyingPurchase || entry?.first_qualifying_purchase || null,
+    rewardTransaction: entry?.rewardTransaction || entry?.reward_transaction || null,
+  };
+}
+
+function normalizeReferralData(data: any): AdminReferralData {
+  const totals = data?.totals || {};
+  return {
+    referrals: Array.isArray(data?.referrals) ? data.referrals.map(normalizeReferralRecord) : [],
+    totals: {
+      registrations: numericValue(totals.registrations),
+      waitingForPurchase: numericValue(totals.waitingForPurchase ?? totals.waiting_for_purchase),
+      rewarded: numericValue(totals.rewarded),
+      disqualified: numericValue(totals.disqualified),
+      referralCreditsIssued: numericValue(totals.referralCreditsIssued ?? totals.referral_credits_issued),
+      signupBonusesIssued: numericValue(totals.signupBonusesIssued ?? totals.signup_bonuses_issued),
+      signupBonusCreditsIssued: numericValue(totals.signupBonusCreditsIssued ?? totals.signup_bonus_credits_issued),
+      suspicious: numericValue(totals.suspicious),
+    },
+    audit: Array.isArray(data?.audit) ? data.audit : [],
   };
 }
 
@@ -259,7 +325,27 @@ function normalizeUsageData(data: any): AdminUsageData {
       usersWithUsageGaps: numericValue(totals.usersWithUsageGaps),
       auditedTokenMints: numericValue(totals.auditedTokenMints),
     },
-    users: Array.isArray(data?.users) ? data.users : [],
+    users: Array.isArray(data?.users) ? data.users.map((entry: any) => ({
+      userId: String(entry?.userId ?? entry?.id ?? ''),
+      email: String(entry?.email || 'Unknown user'),
+      isAdmin: Boolean(entry?.isAdmin),
+      walletCredits: numericValue(entry?.walletCredits),
+      explainedCreditGrants: numericValue(entry?.explainedCreditGrants),
+      unexplainedBalanceCredits: numericValue(entry?.unexplainedBalanceCredits),
+      sessions: numericValue(entry?.sessions),
+      activeSessions: numericValue(entry?.activeSessions),
+      tokenMints: numericValue(entry?.tokenMints),
+      auditedTokenMints: numericValue(entry?.auditedTokenMints),
+      recordedSeconds: numericValue(entry?.recordedSeconds),
+      recordedCredits: numericValue(entry?.recordedCredits),
+      untrackedExposureSeconds: numericValue(entry?.untrackedExposureSeconds),
+      untrackedExposureCredits: numericValue(entry?.untrackedExposureCredits),
+      installationIds: Array.isArray(entry?.installationIds) ? entry.installationIds : [],
+      installationCount: numericValue(entry?.installationCount),
+      suspicious: Boolean(entry?.suspicious),
+      suspiciousReasons: Array.isArray(entry?.suspiciousReasons) ? entry.suspiciousReasons : [],
+      lastActivityAt: entry?.lastActivityAt || null,
+    })) : [],
     dataHealth: {
       analyticsAvailable: Boolean(dataHealth.analyticsAvailable),
       walletLedgerAvailable: Boolean(dataHealth.walletLedgerAvailable),
@@ -386,11 +472,11 @@ function AdminDashboard() {
         adminRequest<AdminUsageData>('/admin-usage'),
       ]);
 
-      if (usersResult.status === 'fulfilled') setUsers(usersResult.value.users || []);
-      if (packagesResult.status === 'fulfilled') setPackages(packagesResult.value.packages || []);
+      if (usersResult.status === 'fulfilled') setUsers(normalizeUsers(usersResult.value));
+      if (packagesResult.status === 'fulfilled') setPackages(normalizeCreditPackages(packagesResult.value));
       if (overviewResult.status === 'fulfilled') setOverview(normalizeOverview(overviewResult.value));
-      if (auditResult.status === 'fulfilled') setAuditEntries(auditResult.value.entries || []);
-      if (referralsResult.status === 'fulfilled') setReferralData(referralsResult.value);
+      if (auditResult.status === 'fulfilled') setAuditEntries(Array.isArray(auditResult.value.entries) ? auditResult.value.entries : []);
+      if (referralsResult.status === 'fulfilled') setReferralData(normalizeReferralData(referralsResult.value));
       if (usageResult.status === 'fulfilled') setUsageData(normalizeUsageData(usageResult.value));
 
       const failedSections = [
@@ -510,7 +596,7 @@ function AdminDashboard() {
         body: JSON.stringify({ packages }),
       });
 
-      setPackages(response.packages || []);
+      setPackages(normalizeCreditPackages(response));
       toast.success('Credit pricing updated');
     } catch (error) {
       console.error(error);

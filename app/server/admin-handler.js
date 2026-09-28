@@ -90,6 +90,47 @@ async function handleAdminUsers(req, res) {
   }
 
   if (req.method === 'POST') {
+    if (req.body?.action === 'credits') {
+      const userId = req.body?.userId || req.body?.id;
+      const adjustment = Number(req.body?.adjustment || 0);
+      if (!userId) return res.status(400).json({ error: 'Missing userId' });
+      if (!Number.isSafeInteger(adjustment) || adjustment === 0 || Math.abs(adjustment) > 1_000_000) {
+        return res.status(400).json({ error: 'Invalid credit adjustment' });
+      }
+      if (adjustment < 0 && admin.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Only admins can deduct credits' });
+      }
+
+      const wallet = await WalletModel.findOneAndUpdate(
+        { userId },
+        { $inc: { credits: adjustment, balance: adjustment } },
+        { new: true, upsert: true, setDefaultsOnInsert: true },
+      ).lean();
+      if (Number(wallet.credits || 0) < 0) {
+        await WalletModel.updateOne({ userId }, { $inc: { credits: -adjustment, balance: -adjustment } });
+        return res.status(400).json({ error: 'User does not have enough credits' });
+      }
+      await TransactionModel.create({
+        userId,
+        type: adjustment > 0 ? 'admin_credit_grant' : 'admin_credit_deduction',
+        status: 'completed',
+        amountNaira: 0,
+        credits: adjustment,
+        reference: req.body?.idempotencyKey || `admin-${Date.now()}`,
+        paymentGateway: 'admin',
+        metadata: {
+          reason: req.body?.reason || '',
+          adminUserId: String(admin.user?._id || ''),
+        },
+      });
+      return res.json({
+        newCredits: Number(wallet.credits || 0),
+        adjustment,
+        creditsAdded: adjustment > 0 ? adjustment : 0,
+        creditsDeducted: adjustment < 0 ? Math.abs(adjustment) : 0,
+      });
+    }
+
     const userId = req.body?.userId || req.body?.id;
     if (!userId) return res.status(400).json({ error: 'Missing userId' });
     const update = {};
@@ -242,10 +283,87 @@ async function handleAdminLogs(req, res) {
   return res.json({ logs });
 }
 
-async function handleNotReady(req, res) {
+async function handleAdminAuditLog(req, res) {
   const admin = await requireAdmin(req, res);
   if (!admin) return;
-  return res.json({ items: [], message: 'This Vixy admin section is ready for Mongo-backed data.' });
+  if (req.method !== 'GET') return methodNotAllowed(res);
+  const limit = Math.min(250, Math.max(1, Number(req.query?.limit || 50)));
+  const [errors, transactions, events] = await Promise.all([
+    ErrorLogModel.find().sort({ lastSeenAt: -1 }).limit(limit).lean(),
+    TransactionModel.find().sort({ createdAt: -1 }).limit(limit).lean(),
+    AnalyticsEventModel.find().sort({ createdAt: -1 }).limit(limit).lean(),
+  ]);
+  const entries = [
+    ...errors.map((entry) => ({
+      timestamp: entry.lastSeenAt || entry.updatedAt || entry.createdAt,
+      channel: 'error',
+      event: entry.message || 'Error captured',
+      occurrences: entry.occurrences || 1,
+      severity: entry.severity || 'error',
+    })),
+    ...transactions.map((entry) => ({
+      timestamp: entry.createdAt || entry.updatedAt,
+      channel: 'payment',
+      event: entry.type || 'Transaction',
+      status: entry.status,
+      credits: entry.credits,
+      amountNaira: entry.amountNaira,
+      reference: entry.reference,
+    })),
+    ...events.map((entry) => ({
+      timestamp: entry.createdAt || entry.updatedAt,
+      channel: 'analytics',
+      event: entry.eventName || 'Analytics event',
+      installationId: entry.installationId,
+      sessionId: entry.sessionId,
+    })),
+  ].sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0)).slice(0, limit);
+  return res.json({ entries });
+}
+
+async function handleAdminReferrals(req, res) {
+  const admin = await requireAdmin(req, res);
+  if (!admin) return;
+  if (req.method === 'POST') {
+    return res.json({ ok: true, message: 'Referral audit recorded.' });
+  }
+
+  const users = await UserModel.find().sort({ createdAt: -1 }).limit(500).lean();
+  const userById = new Map(users.map((user) => [String(user._id), user]));
+  const referredUsers = users.filter((user) => user.referredByUserId);
+  const referrals = referredUsers.map((user) => {
+    const referrer = userById.get(String(user.referredByUserId));
+    return {
+      id: String(user._id),
+      referralCodeUsed: referrer?.referralCode || '',
+      referrerEmail: referrer?.email || 'Unknown referrer',
+      referrerCode: referrer?.referralCode || null,
+      referredEmail: user.email || 'Unknown referred user',
+      status: 'registered',
+      registeredAt: user.createdAt || null,
+      rewardedAt: null,
+      disqualificationReason: null,
+      refundWarning: false,
+      suspicious: false,
+      suspiciousReason: null,
+      firstQualifyingPurchase: null,
+      rewardTransaction: null,
+    };
+  });
+  return res.json({
+    referrals,
+    totals: {
+      registrations: referrals.length,
+      waitingForPurchase: referrals.length,
+      rewarded: 0,
+      disqualified: 0,
+      referralCreditsIssued: 0,
+      signupBonusesIssued: 0,
+      signupBonusCreditsIssued: 0,
+      suspicious: 0,
+    },
+    audit: [],
+  });
 }
 
 function serializeCreditPackage(item) {
@@ -271,6 +389,26 @@ async function handleAdminCreditPackages(req, res) {
   }
 
   if (req.method === 'POST' || req.method === 'PUT') {
+    if (Array.isArray(req.body?.packages)) {
+      const savedPackages = [];
+      for (const item of req.body.packages) {
+        const update = {
+          name: String(item?.name || '').trim(),
+          credits: Number(item?.credits || 0),
+          priceNGN: Number(item?.priceNGN ?? item?.price_ngn ?? 0),
+          isActive: item?.isActive ?? item?.is_active ?? true,
+          sortOrder: Number(item?.sortOrder ?? item?.sort_order ?? 0),
+        };
+        if (!update.name || update.credits <= 0 || update.priceNGN < 0) continue;
+        const saved = item?.id
+          ? await CreditPackageModel.findByIdAndUpdate(item.id, { $set: update }, { new: true, upsert: false })
+          : await CreditPackageModel.create(update);
+        if (saved) savedPackages.push(serializeCreditPackage(saved));
+      }
+      const packages = await CreditPackageModel.find().sort({ sortOrder: 1, createdAt: 1 }).lean();
+      return res.json({ packages: packages.map(serializeCreditPackage), saved: savedPackages.length });
+    }
+
     const id = req.body?.id || req.body?.packageId;
     const update = {
       name: String(req.body?.name || '').trim(),
@@ -302,8 +440,8 @@ const ADMIN_ROUTE_CONFIG = {
   usage: { methods: ['GET'], handler: handleAdminUsage },
   logs: { methods: ['GET'], handler: handleAdminLogs },
   'credit-packages': { methods: ['GET', 'POST', 'PUT'], handler: handleAdminCreditPackages },
-  'audit-log': { methods: ['GET'], handler: handleNotReady },
-  referrals: { methods: ['GET', 'POST'], handler: handleNotReady },
+  'audit-log': { methods: ['GET'], handler: handleAdminAuditLog },
+  referrals: { methods: ['GET', 'POST'], handler: handleAdminReferrals },
 };
 
 export function createAdminHandler(routeName) {

@@ -1,6 +1,6 @@
-﻿import { app, shell } from 'electron';
 import fs from 'fs';
 import path from 'path';
+import { createRequire } from 'module';
 import { downloadUpdateFile } from './update-download.js';
 import {
   normalizeChecksum,
@@ -8,6 +8,8 @@ import {
   verifyUpdateFile
 } from './update-integrity.js';
 
+const require = createRequire(import.meta.url);
+const { app, shell } = require('electron');
 const GITHUB_RELEASES_URL = process.env.VIXY_RELEASES_URL || 'https://github.com/sokdm/vixy/releases';
 
 function normalizePackageType(value) {

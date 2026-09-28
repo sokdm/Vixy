@@ -1,8 +1,8 @@
 ﻿import { spawn } from 'child_process';
 import { once } from 'events';
 
-import { app, BrowserWindow, systemPreferences, ipcMain, Menu, nativeImage, clipboard, shell, nativeTheme, dialog } from 'electron';
 import path from 'path';
+import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import fs from 'fs';
@@ -19,6 +19,8 @@ import {
   isVoiceEngineInstalled,
 } from './voice-engine-installer.js';
 
+const require = createRequire(import.meta.url);
+const { app, BrowserWindow, systemPreferences, ipcMain, Menu, nativeImage, clipboard, shell, nativeTheme, dialog } = require('electron');
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 // Morphly's approved light theme is independent of the operating-system theme.
@@ -1501,7 +1503,12 @@ app.whenReady().then(async () => {
   registerWindowHandlers();
   registerClipboardHandlers();
   if (isPackagedRuntime) {
-    morphlyVcRuntime = createMorphlyVcController();
+    try {
+      morphlyVcRuntime = createMorphlyVcController();
+    } catch (error) {
+      console.warn('VixyVC startup deferred:', formatErrorMessage(error));
+      morphlyVcRuntime = null;
+    }
   }
   registerMorphlyVcHandlers();
 

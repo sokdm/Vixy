@@ -400,8 +400,9 @@ async function handleAdminCreditPackages(req, res) {
           sortOrder: Number(item?.sortOrder ?? item?.sort_order ?? 0),
         };
         if (!update.name || update.credits <= 0 || update.priceNGN < 0) continue;
-        const saved = item?.id
-          ? await CreditPackageModel.findByIdAndUpdate(item.id, { $set: update }, { new: true, upsert: false })
+        const id = String(item?.id || '');
+        const saved = id && !id.startsWith('new:')
+          ? await CreditPackageModel.findByIdAndUpdate(id, { $set: update }, { new: true, upsert: false })
           : await CreditPackageModel.create(update);
         if (saved) savedPackages.push(serializeCreditPackage(saved));
       }

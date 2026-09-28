@@ -587,6 +587,21 @@ function AdminDashboard() {
     );
   };
 
+  const handleAddPackage = () => {
+    setPackages((currentPackages) => [
+      ...currentPackages,
+      {
+        id: `new:${crypto.randomUUID()}`,
+        name: 'New package',
+        credits: 100,
+        priceNGN: 1000,
+        isActive: true,
+        sortOrder: currentPackages.length + 1,
+      },
+    ]);
+    setActiveTab('pricing');
+  };
+
   const handleSavePackages = async () => {
     setSavingPackages(true);
 
@@ -757,6 +772,15 @@ function AdminDashboard() {
     }
   };
 
+  const adminSections = [
+    { value: 'communications', label: 'Feedback & notices', icon: Activity },
+    { value: 'users', label: 'Users', icon: Users },
+    { value: 'usage', label: 'AI Usage', icon: Activity },
+    { value: 'referrals', label: 'Referrals', icon: Gift },
+    { value: 'pricing', label: 'Pricing', icon: WalletCards },
+    { value: 'audit', label: 'Audit Log', icon: ShieldCheck },
+  ];
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-muted px-6">
@@ -857,50 +881,38 @@ function AdminDashboard() {
         </section>
 
         <section className="mt-8 overflow-hidden rounded-[30px] border border-border bg-background shadow-[0_35px_90px_-55px_rgba(15,23,42,0.35)]">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="gap-0">
-            <div className="border-b border-border px-6 py-5 sm:px-8">
-              <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.34em] text-muted-foreground">Workspace</p>
-                  <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">Operations Controls</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">Users, pricing, and backend audit trails aligned in one admin surface.</p>
-                </div>
-
-                <TabsList className="h-auto flex-wrap rounded-2xl bg-muted p-1">
-                  <TabsTrigger value="communications" className="rounded-full px-4 py-2.5 text-sm text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground">Feedback & notices</TabsTrigger>
-                  <TabsTrigger
-                    value="users"
-                    className="rounded-full px-4 py-2.5 text-sm text-muted-foreground data-[state=active]:border-transparent data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-none"
-                  >
-                    Users
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="usage"
-                    className="rounded-full px-4 py-2.5 text-sm text-muted-foreground data-[state=active]:border-transparent data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-none"
-                  >
-                    AI Usage
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="referrals"
-                    className="rounded-full px-4 py-2.5 text-sm text-muted-foreground data-[state=active]:border-transparent data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-none"
-                  >
-                    Referrals
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="pricing"
-                    className="rounded-full px-4 py-2.5 text-sm text-muted-foreground data-[state=active]:border-transparent data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-none"
-                  >
-                    Pricing
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="audit"
-                    className="rounded-full px-4 py-2.5 text-sm text-muted-foreground data-[state=active]:border-transparent data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-none"
-                  >
-                    Audit Log
-                  </TabsTrigger>
-                </TabsList>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="grid gap-0 lg:grid-cols-[260px_minmax(0,1fr)]">
+            <aside className="border-b border-border bg-muted p-4 lg:border-b-0 lg:border-r">
+              <div className="px-2 py-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.34em] text-muted-foreground">Workspace</p>
+                <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">Operations</h3>
+                <p className="mt-2 text-sm text-muted-foreground">Manage users, pricing, notices, referrals, and audit trails.</p>
               </div>
-            </div>
+              <TabsList className="mt-4 flex h-auto flex-row flex-wrap items-stretch justify-start gap-2 rounded-none bg-transparent p-0 lg:flex-col">
+                {adminSections.map((section) => {
+                  const Icon = section.icon;
+                  return (
+                    <TabsTrigger
+                      key={section.value}
+                      value={section.value}
+                      className="justify-start gap-3 rounded-xl border border-transparent px-4 py-3 text-sm text-muted-foreground data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                    >
+                      <Icon className="h-4 w-4" />
+                      {section.label}
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+              <Button
+                type="button"
+                onClick={handleAddPackage}
+                className="mt-5 h-11 w-full rounded-xl bg-primary text-primary-foreground hover:bg-primary-hover"
+              >
+                Add pricing package
+              </Button>
+            </aside>
+
+            <div className="min-w-0">
 
             <TabsContent value="communications" className="m-0 p-6 sm:p-8"><AdminEngagement /></TabsContent>
             <TabsContent value="users" className="m-0 p-6 sm:p-8">
@@ -1341,12 +1353,21 @@ function AdminDashboard() {
                     {packages.map((pkg) => (
                       <TableRow key={pkg.id} className="border-border bg-background hover:bg-muted">
                         <TableCell className="px-5 py-4 whitespace-normal">
-                          <div>
-                            <p className="font-medium text-foreground">{pkg.name}</p>
-                            <p className="mt-1 text-sm text-muted-foreground">Displayed on the purchase page</p>
-                          </div>
+                          <Input
+                            value={pkg.name}
+                            onChange={(event) => updatePackage(pkg.id, { name: event.target.value })}
+                            className="h-10 min-w-[180px] rounded-full border-primary/25 bg-background text-foreground"
+                          />
                         </TableCell>
-                        <TableCell className="px-5 py-4 text-sm font-semibold text-foreground">{pkg.credits.toLocaleString()}</TableCell>
+                        <TableCell className="px-5 py-4">
+                          <Input
+                            type="number"
+                            min="1"
+                            value={String(pkg.credits)}
+                            onChange={(event) => updatePackage(pkg.id, { credits: Math.max(1, Number(event.target.value) || 1) })}
+                            className="h-10 w-full min-w-[120px] rounded-full border-primary/25 bg-background text-foreground"
+                          />
+                        </TableCell>
                         <TableCell className="px-5 py-4">
                           <Input
                             type="number"
@@ -1366,9 +1387,13 @@ function AdminDashboard() {
                           </div>
                         </TableCell>
                         <TableCell className="px-5 py-4">
-                          <Badge variant="outline" className="rounded-full border-primary/25 bg-muted text-foreground">
-                            #{pkg.sortOrder}
-                          </Badge>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={String(pkg.sortOrder)}
+                            onChange={(event) => updatePackage(pkg.id, { sortOrder: Number(event.target.value) || 0 })}
+                            className="h-10 w-full min-w-[100px] rounded-full border-primary/25 bg-background text-foreground"
+                          />
                         </TableCell>
                       </TableRow>
                     ))}
@@ -1430,6 +1455,7 @@ function AdminDashboard() {
                 </Table>
               </div>
             </TabsContent>
+            </div>
           </Tabs>
         </section>
       </main>

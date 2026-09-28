@@ -18,6 +18,26 @@ legacyCameraCleanupDone:
   Delete "$INSTDIR\resources\vixy-cam\VixyVirtualCameraMF.dll"
   RMDir "$INSTDIR\resources\vixy-cam"
 
+  ; Old branded installers registered the same UnityCapture CLSIDs under
+  ; "Morphly Virtual Camera". Unregister them before writing the Vixy name so
+  ; camera apps such as WhatsApp refresh the friendly name cleanly.
+  IfFileExists "$INSTDIR\resources\unity-capture\UnityCaptureFilter32.dll" 0 legacyUnityCaptureUnregister64
+  IfFileExists "$WINDIR\SysWOW64\regsvr32.exe" 0 legacyUnityCaptureUnregister32System
+  nsExec::ExecToLog '"$WINDIR\SysWOW64\regsvr32.exe" /s /u "$INSTDIR\resources\unity-capture\UnityCaptureFilter32.dll"'
+  Goto legacyUnityCaptureUnregister64
+
+legacyUnityCaptureUnregister32System:
+  nsExec::ExecToLog '"$WINDIR\System32\regsvr32.exe" /s /u "$INSTDIR\resources\unity-capture\UnityCaptureFilter32.dll"'
+
+legacyUnityCaptureUnregister64:
+  IfFileExists "$INSTDIR\resources\unity-capture\UnityCaptureFilter64.dll" 0 unityCaptureInstallRetry
+  IfFileExists "$WINDIR\Sysnative\regsvr32.exe" 0 legacyUnityCaptureUnregister64System
+  nsExec::ExecToLog '"$WINDIR\Sysnative\regsvr32.exe" /s /u "$INSTDIR\resources\unity-capture\UnityCaptureFilter64.dll"'
+  Goto unityCaptureInstallRetry
+
+legacyUnityCaptureUnregister64System:
+  nsExec::ExecToLog '"$WINDIR\System32\regsvr32.exe" /s /u "$INSTDIR\resources\unity-capture\UnityCaptureFilter64.dll"'
+
 unityCaptureInstallRetry:
   IfFileExists "$INSTDIR\resources\unity-capture\UnityCaptureFilter32.dll" 0 unityCaptureInstallFailed
   IfFileExists "$INSTDIR\resources\unity-capture\UnityCaptureFilter64.dll" 0 unityCaptureInstallFailed

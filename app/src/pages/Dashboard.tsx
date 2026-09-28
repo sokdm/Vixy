@@ -123,6 +123,7 @@ type ReferenceImage = {
   file: File;
   name: string;
   signature: string;
+  previewUrl: string;
 };
 
 type TransformState = {
@@ -576,6 +577,12 @@ function Dashboard() {
   useEffect(() => {
     referenceImageRef.current = referenceImage;
   }, [referenceImage]);
+
+  useEffect(() => () => {
+    if (referenceImage?.previewUrl) {
+      URL.revokeObjectURL(referenceImage.previewUrl);
+    }
+  }, [referenceImage?.previewUrl]);
 
   useEffect(() => {
     isStreamingRef.current = isStreaming;
@@ -3011,11 +3018,18 @@ function Dashboard() {
     setIsValidatingImage(true);
     try {
       const preparedFile = await prepareXmaxReferenceImage(file);
+      const previewUrl = URL.createObjectURL(preparedFile);
 
-      setReferenceImage({
+      setReferenceImage((current) => {
+        if (current?.previewUrl) {
+          URL.revokeObjectURL(current.previewUrl);
+        }
+        return {
         file: preparedFile,
         name: file.name,
         signature: `${preparedFile.name}:${preparedFile.size}:${preparedFile.lastModified}`,
+        previewUrl,
+        };
       });
     } catch (error) {
       console.error('Reference image validation failed:', error);
@@ -3303,6 +3317,23 @@ function Dashboard() {
               <Upload aria-hidden="true" className="size-3.5 text-muted-foreground" />
               <span>{referenceImage ? 'Change Image' : 'Upload Image'}</span>
             </button>
+
+            {referenceImage && (
+              <div className="flex h-9 min-w-0 max-w-[220px] items-center gap-2 rounded-md border border-success/25 bg-success-soft px-2.5 text-[11px] text-success">
+                <img
+                  src={referenceImage.previewUrl}
+                  alt=""
+                  className="size-6 shrink-0 rounded object-cover"
+                  onError={() => setDashboardError({
+                    title: 'Image preview unavailable',
+                    message: 'The image was uploaded, but Vixy could not render a local preview. Try a PNG or JPG image.',
+                  })}
+                />
+                <span className="min-w-0 truncate font-medium" title={referenceImage.name}>
+                  {referenceImage.name}
+                </span>
+              </div>
+            )}
 
             <EngineChoice
               value={selectedProvider}

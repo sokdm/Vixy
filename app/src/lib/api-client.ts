@@ -1,4 +1,4 @@
-const DEPLOYED_APP_ORIGIN = 'https://your-domain.example';
+const DEPLOYED_APP_ORIGIN = 'https://vixy.onrender.com';
 const LOCAL_API_BASE = '/api';
 export const AUTH_TOKEN_STORAGE_KEY = 'vixy:auth-token';
 

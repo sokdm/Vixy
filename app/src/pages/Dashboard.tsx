@@ -8,6 +8,7 @@ import {
   Play,
   Square,
   Monitor,
+  Image as ImageIcon,
   Settings,
   Maximize,
   Minimize,
@@ -3031,6 +3032,15 @@ function Dashboard() {
         previewUrl,
         };
       });
+
+      if (isStreamingRef.current && realtimeClientRef.current) {
+        queueTransformSync({
+          prompt: activePromptRef.current,
+          enhance: DEFAULT_ENHANCE,
+          image: preparedFile,
+          imageSignature: `${preparedFile.name}:${preparedFile.size}:${preparedFile.lastModified}`,
+        }, true);
+      }
     } catch (error) {
       console.error('Reference image validation failed:', error);
       setDashboardError({
@@ -3160,7 +3170,28 @@ function Dashboard() {
           }}
         />
 
-        {!isStreaming && !isLoading && (
+        {!isStreaming && !isLoading && referenceImage && (
+              <div className="flex max-w-xl flex-col items-center justify-center px-8 py-7 text-center">
+                <div className="relative max-h-[min(68vh,560px)] w-full overflow-hidden rounded-lg border border-border bg-muted shadow-[0_24px_70px_rgba(0,0,0,0.35)]">
+                  <img
+                    src={referenceImage.previewUrl}
+                    alt="Selected reference preview"
+                    className="h-full max-h-[min(68vh,560px)] w-full object-contain"
+                    onError={() => setDashboardError({
+                      title: 'Image preview unavailable',
+                      message: 'The image was uploaded, but Vixy could not render a local preview. Try a PNG or JPG image.',
+                    })}
+                  />
+                </div>
+                <div className="mt-4 flex items-center gap-2 rounded-md border border-success/25 bg-success-soft px-3 py-2 text-xs text-success">
+                  <ImageIcon aria-hidden="true" className="size-4" />
+                  <span className="max-w-[280px] truncate font-medium" title={referenceImage.name}>{referenceImage.name}</span>
+                </div>
+                <p className="mt-2 text-[11px] leading-4 text-muted-foreground">Choose your physical camera, then go live to animate this image.</p>
+          </div>
+        )}
+
+        {!isStreaming && !isLoading && !referenceImage && (
               <div className="flex max-w-xs flex-col items-center justify-center px-8 py-7 text-center">
                 <div className="grid size-10 place-items-center rounded-md border border-border bg-background text-muted-foreground">
                   <Monitor aria-hidden="true" className="size-5 stroke-[1.4]" />

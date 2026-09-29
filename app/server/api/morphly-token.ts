@@ -50,7 +50,7 @@ export default async function handler(req, res) {
 
   const apiKey = String(process.env.MORPHLY_API_KEY || '').trim();
   if (!apiKey) {
-    return res.status(503).json({ error: 'Morphly API key is not configured' });
+    return res.status(503).json({ error: 'Vixy realtime API key is not configured' });
   }
 
   const requested = req.body && typeof req.body === 'object' ? req.body : {};
@@ -75,9 +75,9 @@ export default async function handler(req, res) {
       signal: AbortSignal.timeout(20000),
     });
 
-    const data = await upstream.json().catch(() => ({ error: 'Invalid Morphly API response' }));
+    const data = await upstream.json().catch(() => ({ error: 'Invalid Vixy realtime API response' }));
     return res.status(upstream.status).json(data);
   } catch {
-    return res.status(502).json({ error: 'Morphly session service unavailable' });
+    return res.status(502).json({ error: 'Vixy realtime session service unavailable' });
   }
 }

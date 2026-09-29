@@ -44,13 +44,13 @@ export function validateCameraSelectionForTrustedProcess(payload) {
 
   const trustedLabel = String(matchingDevice.label || selectedLabel || '').trim();
   if (!trustedLabel) {
-    return { valid: false, error: 'Allow camera permission before starting Morphly.' };
+    return { valid: false, error: 'Allow camera permission before starting Vixy.' };
   }
 
   if (isTrustedProcessVirtualCamera(trustedLabel)) {
     return {
       valid: false,
-      error: 'Virtual cameras cannot be used as the Morphly input. Select your integrated or USB hardware camera.',
+      error: 'Virtual cameras cannot be used as the Vixy input. Select your integrated or USB hardware camera.',
     };
   }
 

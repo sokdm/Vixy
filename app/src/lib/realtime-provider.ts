@@ -75,7 +75,7 @@ export function getViduRealtimeUserMessage(
     return 'The Pro session expired. Stop the stream and start it again.';
   }
   if (/webrtc|rtc|network|socket|connect|ice|timeout/.test(diagnostic)) {
-    return 'The Pro connection was interrupted. Morphly is trying to recover it.';
+    return 'The Pro connection was interrupted. Vixy is trying to recover it.';
   }
 
   return (message || fallback)

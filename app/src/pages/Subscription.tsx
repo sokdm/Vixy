@@ -552,7 +552,7 @@ function Subscription() {
     );
     if (!checkoutWindow) {
       trackPaymentFailed({ packageId: selectedPlan.id!, reason: 'checkout_popup_blocked' });
-      toast.error('Please allow payment pop-ups for Morphly and try again.');
+      toast.error('Please allow payment pop-ups for Vixy and try again.');
       return;
     }
 

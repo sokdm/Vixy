@@ -54,7 +54,7 @@ export const dashboardTourSteps: Step[] = [
     content: (
       <div className="space-y-3">
         <p>
-          After selecting your physical laptop camera and uploading an image, click Start. Morphly
+          After selecting your physical laptop camera and uploading an image, click Start. Vixy
           will process your camera feed and publish the transformed output through the Vixy virtual camera.
         </p>
         <p className="font-semibold text-warning">

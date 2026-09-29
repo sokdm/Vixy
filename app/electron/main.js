@@ -23,7 +23,7 @@ const require = createRequire(import.meta.url);
 const { app, BrowserWindow, systemPreferences, ipcMain, Menu, nativeImage, clipboard, shell, nativeTheme, dialog } = require('electron');
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// Morphly's approved light theme is independent of the operating-system theme.
+// Vixy's approved light theme is independent of the operating-system theme.
 nativeTheme.themeSource = 'light';
 // The branded development launcher runs a renamed electron.exe. Electron treats
 // that executable as packaged, so use the launcher's explicit marker as the
@@ -69,9 +69,9 @@ const VIRTUAL_CAM_PROFILE = selectVirtualCameraProfile();
 
 if (process.env.MORPHLY_DISABLE_HARDWARE_ACCELERATION === '1') {
   app.disableHardwareAcceleration();
-  console.warn('Morphly hardware acceleration disabled by MORPHLY_DISABLE_HARDWARE_ACCELERATION.');
+  console.warn('Vixy hardware acceleration disabled by MORPHLY_DISABLE_HARDWARE_ACCELERATION.');
 } else {
-  console.info('Morphly hardware acceleration enabled for realtime video rendering.');
+  console.info('Vixy hardware acceleration enabled for realtime video rendering.');
 }
 
 function configureChromiumCachePaths() {
@@ -907,7 +907,7 @@ function buildLoadFailureHtml(failedUrl, errorCode, errorDescription) {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Morphly Startup Error</title>
+    <title>Vixy Startup Error</title>
     <style>
       :root { color-scheme: light; }
       body {
@@ -952,7 +952,7 @@ function buildLoadFailureHtml(failedUrl, errorCode, errorDescription) {
   </head>
   <body>
     <div class="card">
-      <h1>Morphly could not load the app UI</h1>
+      <h1>Vixy could not load the app UI</h1>
       <p>Electron started, but the renderer URL was unavailable.</p>
       <p>URL: <code>${safeUrl}</code></p>
       <p>Error: <code>${errorCode} ${safeDescription}</code></p>
@@ -986,12 +986,12 @@ function logDevelopmentRendererHealth(window) {
       };
     })()`).then((health) => {
       console.info(
-        'Morphly renderer health: ' +
+        'Vixy renderer health: ' +
         `readyState=${health.readyState} rootPresent=${health.rootPresent} ` +
         `rootChildren=${health.rootChildCount} bodyTextLength=${health.bodyTextLength}`
       );
     }).catch((error) => {
-      console.error(`Unable to inspect Morphly renderer health: ${formatErrorMessage(error)}`);
+      console.error(`Unable to inspect Vixy renderer health: ${formatErrorMessage(error)}`);
     });
   }, 1000);
 }
@@ -1071,7 +1071,7 @@ function createWindow() {
   const windowIcon = nativeImage.createFromPath(iconPath);
 
   if (windowIcon.isEmpty()) {
-    console.error(`Morphly window icon could not be loaded: ${iconPath}`);
+    console.error(`Vixy window icon could not be loaded: ${iconPath}`);
   }
 
   mainWindow = new BrowserWindow({
@@ -1418,7 +1418,7 @@ function registerMorphlyVcHandlers() {
           success: false,
           error: error instanceof Error
             ? error.message
-            : 'Morphly could not install the voice engine.',
+            : 'Vixy could not install the voice engine.',
         };
       } finally {
         voiceEngineInstallPromise = null;

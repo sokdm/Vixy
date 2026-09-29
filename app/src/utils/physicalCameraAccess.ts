@@ -68,11 +68,11 @@ export function validateSelectedPhysicalCamera(
   }
 
   if (isVirtualCamera(selectedDevice.label)) {
-    throw new Error('Virtual cameras cannot be used as the Morphly input. Select your integrated or USB hardware camera.');
+    throw new Error('Virtual cameras cannot be used as the Vixy input. Select your integrated or USB hardware camera.');
   }
 
   if (!selectedDevice.label) {
-    throw new Error('Allow camera permission before starting Morphly.');
+    throw new Error('Allow camera permission before starting Vixy.');
   }
 
   return selectedDevice;
@@ -84,10 +84,10 @@ export function validateOpenedCameraTrack(
 ): void {
   const settings = track.getSettings();
   if (settings.deviceId && settings.deviceId !== selectedCameraId) {
-    throw new Error('Morphly could not open the exact camera you selected.');
+    throw new Error('Vixy could not open the exact camera you selected.');
   }
 
   if (isVirtualCamera(track.label)) {
-    throw new Error('Virtual cameras cannot be used as the Morphly input. Select your integrated or USB hardware camera.');
+    throw new Error('Virtual cameras cannot be used as the Vixy input. Select your integrated or USB hardware camera.');
   }
 }

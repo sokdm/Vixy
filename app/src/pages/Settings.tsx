@@ -243,7 +243,7 @@ function Settings() {
       toast.error(
         denied
           ? 'Camera access was denied. Enable it in Windows privacy settings, then try again.'
-          : 'Morphly could not access a camera on this device.',
+          : 'Vixy could not access a camera on this device.',
       );
     } finally {
       setIsRequestingCameraPermission(false);
@@ -286,7 +286,7 @@ function Settings() {
   };
 
   const referralBaseUrl = String(
-    import.meta.env.VITE_PUBLIC_APP_URL || 'https://morphly-alpha.vercel.app',
+    import.meta.env.VITE_PUBLIC_APP_URL || 'https://vixy.onrender.com',
   ).replace(/\/+$/, '');
   const referralLink = referralSummary?.referralCode
     ? `${referralBaseUrl}/#/signup?ref=${encodeURIComponent(referralSummary.referralCode)}`
@@ -381,13 +381,13 @@ function Settings() {
         <Card className="bg-gradient-to-br from-background to-background border-border overflow-hidden rounded-2xl shadow-2xl shadow-black/5">
           <CardHeader className="border-b border-border">
             <CardTitle className="text-lg font-semibold text-foreground tracking-tight">Streaming / Capture Setup</CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">Learn how to send Morphly into SplitCam, OBS, Zoom, WhatsApp & more</CardDescription>
+            <CardDescription className="text-xs text-muted-foreground">Learn how to send Vixy into SplitCam, OBS, Zoom, WhatsApp & more</CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label className="text-sm font-medium text-foreground">SplitCam / OBS Guide</Label>
-                <p className="text-xs text-muted-foreground">Step-by-step instructions for capturing the Morphly feed and routing it into video apps</p>
+                <p className="text-xs text-muted-foreground">Step-by-step instructions for capturing the Vixy feed and routing it into video apps</p>
               </div>
               <Button 
                 onClick={() => setIsGuideModalOpen(true)}
@@ -403,7 +403,7 @@ function Settings() {
           <CardHeader className="border-b border-border">
             <CardTitle className="text-lg font-semibold tracking-tight text-foreground">Guided Tour &amp; Camera Permissions</CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
-              Reopen the dashboard walkthrough or confirm that Morphly can see your physical camera.
+              Reopen the dashboard walkthrough or confirm that Vixy can see your physical camera.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 p-6">
@@ -445,7 +445,7 @@ function Settings() {
           <CardHeader className="border-b border-border">
             <CardTitle className="text-lg font-semibold tracking-tight text-foreground">Referral Program</CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
-              Invite people to Morphly. You receive 200 credits after each referred user completes
+              Invite people to Vixy. You receive 200 credits after each referred user completes
               their first successful credit purchase.
             </CardDescription>
           </CardHeader>

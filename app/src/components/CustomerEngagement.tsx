@@ -88,7 +88,7 @@ export function CustomerEngagement({ paused = false }: { paused?: boolean }) {
   if (!user) return null;
   return <>
     <div className="morphly-community-bar">
-      <div className="morphly-notices" aria-label="Morphly service announcements">
+      <div className="morphly-notices" aria-label="Vixy service announcements">
         {active.length ? active.map((notice) => <div key={keyOf(notice)} className={`morphly-notice ${notice.kind}`} role="status">
           {notice.kind === 'maintenance' ? <Wrench size={15} aria-hidden="true" /> : <Megaphone size={15} aria-hidden="true" />}
           <p><strong>{notice.title}</strong><span>{notice.message}</span></p>
@@ -96,7 +96,7 @@ export function CustomerEngagement({ paused = false }: { paused?: boolean }) {
             {notice.kind === 'maintenance' ? 'Expected in ' : 'Ends in '}{formatCountdown(Date.parse(notice.ends_at) - now)}
           </time>}
           <button type="button" aria-label={`Dismiss ${notice.title}`} onClick={() => dismiss(notice)}><X size={16} /></button>
-        </div>) : <span className="morphly-community-label">Morphly workspace</span>}
+        </div>) : <span className="morphly-community-label">Vixy workspace</span>}
       </div>
       <button type="button" ref={manualRef} className="morphly-feedback-link" onClick={openReview}><MessageSquare size={14} aria-hidden="true" /> Feedback</button>
     </div>
@@ -104,11 +104,11 @@ export function CustomerEngagement({ paused = false }: { paused?: boolean }) {
       <DialogContent className="morphly-feedback-dialog" showCloseButton={false} onCloseAutoFocus={(event) => { event.preventDefault(); manualRef.current?.focus(); }}>
         <DialogClose className="morphly-dialog-close" aria-label="Close review form"><X size={18} /></DialogClose>
         <DialogHeader>
-          <span className="morphly-feedback-eyebrow">Help shape Morphly</span>
-          <DialogTitle>{saved ? 'Thank you for your feedback' : 'How is Morphly working for you?'}</DialogTitle>
+          <span className="morphly-feedback-eyebrow">Help shape Vixy</span>
+          <DialogTitle>{saved ? 'Thank you for your feedback' : 'How is Vixy working for you?'}</DialogTitle>
           <DialogDescription>{saved ? 'Your review has been saved for our team to read.' : 'Tell us what you enjoy, what is getting in the way, or what you would like us to add.'}</DialogDescription>
         </DialogHeader>
-        {saved ? <div className="morphly-feedback-success"><CheckCircle2 aria-hidden="true" /><p>Every experience helps us decide what to improve next.</p><button type="button" className="community-primary" onClick={() => setOpen(false)}>Back to Morphly</button><button type="button" onClick={() => { setSaved(false); setRating(''); }}>Write another review</button></div> :
+        {saved ? <div className="morphly-feedback-success"><CheckCircle2 aria-hidden="true" /><p>Every experience helps us decide what to improve next.</p><button type="button" className="community-primary" onClick={() => setOpen(false)}>Back to Vixy</button><button type="button" onClick={() => { setSaved(false); setRating(''); }}>Write another review</button></div> :
           <form onSubmit={submit} className="morphly-feedback-form">
             <div className="morphly-feedback-fields">
               <label>Feedback type<select value={category} disabled={busy} onChange={(event) => { setCategory(event.target.value); requestId.current = crypto.randomUUID(); }}><option value="experience">My experience</option><option value="issue">Something is not working</option><option value="idea">An idea or feature request</option></select></label>
@@ -116,7 +116,7 @@ export function CustomerEngagement({ paused = false }: { paused?: boolean }) {
             </div>
             <label htmlFor="morphly-review-message">Your feedback</label>
             <textarea id="morphly-review-message" ref={formRef} value={message} disabled={busy} onChange={(event) => { setMessage(event.target.value); requestId.current = crypto.randomUUID(); }} maxLength={4000} rows={5} aria-invalid={Boolean(error)} aria-describedby="morphly-review-help morphly-review-error" placeholder="What happened? What could work better for you?" />
-            <p id="morphly-review-help" className="community-helper">Sent privately to the Morphly team with your account email. {message.length.toLocaleString()}/4,000</p>
+            <p id="morphly-review-help" className="community-helper">Sent privately to the Vixy team with your account email. {message.length.toLocaleString()}/4,000</p>
             {error && <p id="morphly-review-error" className="community-error" role="alert">{error}</p>}
             <div className="morphly-feedback-actions"><button type="button" onClick={() => setOpen(false)}>Maybe later</button><button type="submit" className="community-primary" disabled={busy}>{busy ? 'Sending feedback…' : 'Send feedback'}</button></div>
           </form>}

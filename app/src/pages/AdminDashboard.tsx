@@ -699,6 +699,12 @@ function AdminDashboard() {
         ...currentOverview,
         totalCredits: Math.max(0, currentOverview.totalCredits + response.adjustment),
       }));
+      window.dispatchEvent(new Event('vixy:wallet-refresh'));
+      try {
+        localStorage.setItem('vixy:wallet-refresh', `${Date.now()}:${creditDialogUser.id}`);
+      } catch {
+        // Storage broadcast is best-effort; the API response already saved the credit change.
+      }
       creditOperationRef.current = null;
       resetCreditDialog();
       toast.success(
@@ -801,7 +807,7 @@ function AdminDashboard() {
               <ShieldCheck className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground">Morphly</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground">Vixy</p>
               <h1 className="text-lg font-semibold tracking-tight text-foreground">Admin Console</h1>
             </div>
           </div>
@@ -1070,7 +1076,7 @@ function AdminDashboard() {
                     <div>
                       <h4 className="text-lg font-semibold text-foreground">Plus usage by user</h4>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        Recorded generation is confirmed by Morphly. Untracked exposure is the maximum connected time with a first frame but no matching usage record; it is a warning, not a confirmed Plus charge.
+                        Recorded generation is confirmed by Vixy. Untracked exposure is the maximum connected time with a first frame but no matching usage record; it is a warning, not a confirmed Plus charge.
                       </p>
                     </div>
                     <div className="rounded-full border border-primary/25 bg-background px-4 py-2 text-sm text-muted-foreground">

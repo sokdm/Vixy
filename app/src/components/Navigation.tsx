@@ -54,8 +54,8 @@ export function Navigation({ children }: NavigationProps) {
                 <Video className="w-4 h-4 text-primary-foreground" />
               </div>
               <div>
-                <span className="text-lg font-bold text-foreground tracking-tight">Morphly</span>
-                <p className="text-[10px] text-muted-foreground -mt-0.5 tracking-wide">AI Streaming Platform</p>
+                <span className="text-lg font-bold text-foreground tracking-tight">Vixy</span>
+                <p className="text-[10px] text-muted-foreground -mt-0.5 tracking-wide">AI Camera Studio</p>
               </div>
             </NavLink>
           </div>

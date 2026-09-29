@@ -70,7 +70,7 @@ function MorphlyTooltip({
             type="button"
             className="rounded-lg bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-warning focus:ring-offset-2 focus:ring-offset-background"
           >
-            {isLastStep ? 'Start using Morphly' : continuous ? 'Next' : 'Close'}
+            {isLastStep ? 'Start using Vixy' : continuous ? 'Next' : 'Close'}
           </button>
         </div>
       </div>
@@ -87,7 +87,7 @@ export function MorphlyDashboardTour({
 
   const handleEvent = (data: EventData) => {
     if (data.type === EVENTS.TARGET_NOT_FOUND) {
-      console.warn('Morphly guided-tour target was not found:', data.step.target);
+      console.warn('Vixy guided-tour target was not found:', data.step.target);
     }
 
     if (data.action === ACTIONS.START) {

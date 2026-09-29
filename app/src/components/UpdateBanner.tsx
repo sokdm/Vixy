@@ -68,7 +68,7 @@ export function UpdateBanner() {
               ? 'Click Install to restart and apply the update.'
               : isDownloading
                 ? `Downloading… ${percent}%`
-                : 'A new version of Morphly is available.'}
+                : 'A new version of Vixy is available.'}
           </p>
 
           {/* Download progress bar */}

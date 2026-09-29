@@ -38,7 +38,7 @@ export function buildXmaxRealtimeContext(
 
 export function getXmaxRealtimeUserMessage(
   error: unknown,
-  fallback = 'Morphly could not update the AI video. Please try again.',
+  fallback = 'Vixy could not update the AI video. Please try again.',
 ): string {
   const candidate = typeof error === 'object' && error !== null
     ? error as { code?: unknown; message?: unknown; cause?: { message?: unknown } | unknown }
@@ -74,7 +74,7 @@ export function getXmaxRealtimeUserMessage(
     case 'NETWORK_ERROR':
     case 'WEB_RTC_ERROR':
     case 'SESSION_ERROR':
-      return 'The AI video connection was interrupted. Morphly is trying to recover it.';
+      return 'The AI video connection was interrupted. Vixy is trying to recover it.';
     default:
       return fallback;
   }
@@ -96,7 +96,7 @@ function canvasToJpeg(canvas: HTMLCanvasElement, quality: number): Promise<Blob>
       if (blob) {
         resolve(blob);
       } else {
-        reject(new Error('Morphly could not prepare this image for Plus.'));
+        reject(new Error('Vixy could not prepare this image for Plus.'));
       }
     }, 'image/jpeg', quality);
   });
@@ -127,7 +127,7 @@ export async function prepareXmaxReferenceImage(file: File): Promise<File> {
 
     const context = canvas.getContext('2d', { alpha: false });
     if (!context) {
-      throw new Error('Morphly could not prepare this image for Plus.');
+      throw new Error('Vixy could not prepare this image for Plus.');
     }
 
     context.drawImage(bitmap, 0, 0, width, height);

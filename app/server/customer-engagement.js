@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 
-export const SOFTWARE_URL = 'https://live.morphly.fun';
+export const SOFTWARE_URL = process.env.VITE_PUBLIC_APP_URL || process.env.PUBLIC_APP_URL || 'https://vixy.onrender.com';
 export const REVIEW_ADMIN_EMAIL = 'samuellucky2424@gmail.com';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export const isUuid = (value) => typeof value === 'string' && UUID.test(value);
@@ -38,29 +38,29 @@ export function validateAnnouncement(body, now = new Date()) {
 }
 
 const customerCopy = {
-  signup_checkin: ['How is your Morphly experience?', 'You joined Morphly recently. Have you tried your first live stream? Tell us what worked, what got in the way, and what you would like us to improve or add.'],
-  purchase_feedback: ['Thank you for choosing Morphly', 'Your purchase is complete. How has your experience been so far? We would love to hear what you enjoy, any issues you have had, and what we should improve next.'],
-  credits_finished: ['How did your Morphly session go?', 'You have used your paid Morphly credits. How was the experience? Tell us what worked well, what needs attention, or which features you would like next.'],
-  subscription_finished: ['Your Morphly plan has ended — how was it?', 'Your subscription period has ended. What did you think of Morphly? Please tell us what you would improve and whether anything would help you return.'],
-  first_purchase_reminder: ['What would make Morphly better for you?', 'We noticed you have not made another purchase since your first one. Is there something about the experience, quality, pricing, or features that we could improve? We would appreciate your honest feedback.'],
+  signup_checkin: ['How is your Vixy experience?', 'You joined Vixy recently. Have you tried your first live stream? Tell us what worked, what got in the way, and what you would like us to improve or add.'],
+  purchase_feedback: ['Thank you for choosing Vixy', 'Your purchase is complete. How has your experience been so far? We would love to hear what you enjoy, any issues you have had, and what we should improve next.'],
+  credits_finished: ['How did your Vixy session go?', 'You have used your paid Vixy credits. How was the experience? Tell us what worked well, what needs attention, or which features you would like next.'],
+  subscription_finished: ['Your Vixy plan has ended - how was it?', 'Your subscription period has ended. What did you think of Vixy? Please tell us what you would improve and whether anything would help you return.'],
+  first_purchase_reminder: ['What would make Vixy better for you?', 'We noticed you have not made another purchase since your first one. Is there something about the experience, quality, pricing, or features that we could improve? We would appreciate your honest feedback.'],
 };
 
 export function renderEngagementEmail({ kind, email, review, unsubscribeToken, from, unsubscribeBase = SOFTWARE_URL }) {
   const isAdmin = kind === 'admin_review';
   const copy = customerCopy[kind];
   if (!isAdmin && !copy) throw new Error('Unsupported email type');
-  const subject = isAdmin ? `Morphly review: ${review.category}${review.rating ? ` (${review.rating}/5)` : ''}` : copy[0];
+  const subject = isAdmin ? `Vixy review: ${review.category}${review.rating ? ` (${review.rating}/5)` : ''}` : copy[0];
   const message = isAdmin ? `From: ${review.email}\nCategory: ${review.category}\nRating: ${review.rating || 'Not rated'}\n\n${review.message}` : copy[1];
   const feedbackUrl = `${SOFTWARE_URL}/#/dashboard?feedback=1`;
   const unsubscribeUrl = `${unsubscribeBase.replace(/\/$/, '')}/api/email-preferences?token=${encodeURIComponent(unsubscribeToken || '')}`;
-  const footer = isAdmin ? '' : `\n\nYou can reply to this email or leave feedback in Morphly.\nUnsubscribe from experience and reminder emails: ${unsubscribeUrl}`;
+  const footer = isAdmin ? '' : `\n\nYou can reply to this email or leave feedback in Vixy.\nUnsubscribe from experience and reminder emails: ${unsubscribeUrl}`;
   return {
     from,
     to: [isAdmin ? REVIEW_ADMIN_EMAIL : email],
     reply_to: isAdmin ? review.email : REVIEW_ADMIN_EMAIL,
     subject,
-    text: `${subject}\n\n${message}\n\n${isAdmin ? 'Open Morphly' : 'Share your experience'}: ${feedbackUrl}\nMorphly: ${SOFTWARE_URL}${footer}`,
-    html: `<!doctype html><html><body style="margin:0;background:#ffffff;font-family:Arial,sans-serif;color:#20252d"><main style="max-width:560px;margin:32px auto;background:white;padding:32px;border:1px solid #e1e4e9;border-radius:12px"><a href="${SOFTWARE_URL}" style="color:#c82436;font-size:20px;font-weight:bold;text-decoration:none">Morphly</a><h1 style="font-size:23px;line-height:1.4;margin-top:28px">${escapeHtml(subject)}</h1><p style="font-size:16px;line-height:1.7;white-space:pre-wrap">${escapeHtml(message)}</p><p style="margin:28px 0"><a href="${feedbackUrl}" style="display:inline-block;background:#c82436;color:white;padding:13px 20px;border-radius:6px;text-decoration:none">${isAdmin ? 'Open Morphly' : 'Share your experience'}</a></p>${isAdmin ? '' : '<p style="font-size:14px;line-height:1.6">You can also reply directly to this email. We read every response.</p>'}<hr style="border:0;border-top:1px solid #e1e4e9"><p style="font-size:13px;line-height:1.6"><a href="${SOFTWARE_URL}" style="color:#c82436">live.morphly.fun</a>${isAdmin ? '' : `<br><a href="${escapeHtml(unsubscribeUrl)}" style="color:#c82436">Unsubscribe from experience and reminder emails</a>`}</p></main></body></html>`,
+    text: `${subject}\n\n${message}\n\n${isAdmin ? 'Open Vixy' : 'Share your experience'}: ${feedbackUrl}\nVixy: ${SOFTWARE_URL}${footer}`,
+    html: `<!doctype html><html><body style="margin:0;background:#ffffff;font-family:Arial,sans-serif;color:#20252d"><main style="max-width:560px;margin:32px auto;background:white;padding:32px;border:1px solid #e1e4e9;border-radius:12px"><a href="${SOFTWARE_URL}" style="color:#c82436;font-size:20px;font-weight:bold;text-decoration:none">Vixy</a><h1 style="font-size:23px;line-height:1.4;margin-top:28px">${escapeHtml(subject)}</h1><p style="font-size:16px;line-height:1.7;white-space:pre-wrap">${escapeHtml(message)}</p><p style="margin:28px 0"><a href="${feedbackUrl}" style="display:inline-block;background:#c82436;color:white;padding:13px 20px;border-radius:6px;text-decoration:none">${isAdmin ? 'Open Vixy' : 'Share your experience'}</a></p>${isAdmin ? '' : '<p style="font-size:14px;line-height:1.6">You can also reply directly to this email. We read every response.</p>'}<hr style="border:0;border-top:1px solid #e1e4e9"><p style="font-size:13px;line-height:1.6"><a href="${SOFTWARE_URL}" style="color:#c82436">vixy.onrender.com</a>${isAdmin ? '' : `<br><a href="${escapeHtml(unsubscribeUrl)}" style="color:#c82436">Unsubscribe from experience and reminder emails</a>`}</p></main></body></html>`,
   };
 }
 

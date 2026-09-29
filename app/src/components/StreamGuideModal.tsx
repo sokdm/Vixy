@@ -46,7 +46,7 @@ export function StreamGuideModal({ isOpen, onClose }: StreamGuideModalProps) {
     {
       num: 1,
       title: 'Start Vixy',
-      desc: 'Begin your Morphly session, then click "Open Capture Window" only when you want to send the feed out.',
+      desc: 'Begin your Vixy session, then click "Open Capture Window" only when you want to send the feed out.',
       icon: <CheckCircle2 className="w-4 h-4 text-success" />,
     },
     {
@@ -58,7 +58,7 @@ export function StreamGuideModal({ isOpen, onClose }: StreamGuideModalProps) {
     {
       num: 3,
       title: 'Add Window Capture',
-      desc: 'Create a Window Capture source instead of choosing Morphly as a webcam device.',
+      desc: 'Create a Window Capture source instead of choosing Vixy as a webcam device.',
       icon: <FilePlus2 className="w-4 h-4 text-success" />,
     },
     {

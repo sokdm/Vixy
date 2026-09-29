@@ -377,7 +377,7 @@ export function MeanVcPanel() {
         return;
       }
       if (!result?.success) {
-        throw new Error(result?.error || 'Morphly could not install the voice engine.');
+        throw new Error(result?.error || 'Vixy could not install the voice engine.');
       }
 
       setVoiceEngine((current) => ({ ...current, installed: true, phase: 'done', percent: 100 }));
@@ -388,7 +388,7 @@ export function MeanVcPanel() {
         phase: 'idle',
         error: installError instanceof Error
           ? installError.message
-          : 'Morphly could not install the voice engine.',
+          : 'Vixy could not install the voice engine.',
       }));
     }
   };
@@ -927,7 +927,7 @@ export function MeanVcPanel() {
                 <div className="min-w-0 flex-1">
                   <p className="text-[11px] font-semibold text-foreground">Voice changer engine is not installed</p>
                   <p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">
-                    Morphly ships without the local voice engine to keep the download small.
+                    Vixy ships without the local voice engine to keep the download small.
                     Install it once to enable voice changing.
                   </p>
                   {voiceEngineBusy ? (

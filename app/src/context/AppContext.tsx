@@ -30,6 +30,7 @@ interface AppContextType {
   notifications: Notification[];
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp'>) => void;
   clearNotifications: () => void;
+  refreshWallet: () => Promise<void>;
 }
 
 export interface Notification {
@@ -56,50 +57,89 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  useEffect(() => {
+  const refreshWallet = useCallback(async () => {
     if (isLocalPreview || user?.id === '00000000-0000-0000-0000-000000000001') {
       setBalanceState(10000);
       setCreditsState(999999);
       return;
     }
 
-    if (user?.id) {
-      apiFetchWithAuth(`/wallet?userId=${user.id}`)
-        .then(async res => {
-          if (!res.ok) {
-            const rawBody = await res.text();
-            let apiError = rawBody;
-            try {
-              const parsedBody = JSON.parse(rawBody);
-              apiError = parsedBody?.error || parsedBody?.message || rawBody;
-            } catch {
-              // Keep raw body when response is not JSON.
-            }
+    if (!user?.id) {
+      setBalanceState(0);
+      setCreditsState(0);
+      setTransactions([]);
+      return;
+    }
 
-            const errorDetail = apiError ? `: ${apiError}` : '';
-            throw new Error(`API returned ${res.status}${errorDetail}`);
-          }
-          const text = await res.text();
-          try {
-            return JSON.parse(text);
-          } catch (e) {
-            throw new Error(`Invalid JSON format from API: ${text.substring(0, 20)}`);
-          }
-        })
-        .then(data => {
-          if (data) {
-            if (data.balance !== undefined) {
-              setBalanceState(data.balance);
-            }
-            if (data.credits !== undefined) {
-              setCreditsState(data.credits);
-            }
-            setTransactions(data.transactions || []);
-          }
-        })
-        .catch(err => console.warn('Failed to sync wallet data:', err));
+    try {
+      const res = await apiFetchWithAuth(`/wallet?userId=${user.id}`);
+      if (!res.ok) {
+        const rawBody = await res.text();
+        let apiError = rawBody;
+        try {
+          const parsedBody = JSON.parse(rawBody);
+          apiError = parsedBody?.error || parsedBody?.message || rawBody;
+        } catch {
+          // Keep raw body when response is not JSON.
+        }
+
+        const errorDetail = apiError ? `: ${apiError}` : '';
+        throw new Error(`API returned ${res.status}${errorDetail}`);
+      }
+
+      const text = await res.text();
+      const data = JSON.parse(text);
+      if (data.balance !== undefined) setBalanceState(data.balance);
+      if (data.credits !== undefined) setCreditsState(data.credits);
+      setTransactions(data.transactions || []);
+    } catch (err) {
+      console.warn('Failed to sync wallet data:', err);
     }
   }, [isLocalPreview, user?.id]);
+
+  useEffect(() => {
+    void refreshWallet();
+  }, [refreshWallet]);
+
+  useEffect(() => {
+    if (!user?.id || isLocalPreview) return;
+
+    const syncWhenVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshWallet();
+      }
+    };
+
+    const syncWhenFocused = () => {
+      void refreshWallet();
+    };
+
+    document.addEventListener('visibilitychange', syncWhenVisible);
+    window.addEventListener('focus', syncWhenFocused);
+
+    return () => {
+      document.removeEventListener('visibilitychange', syncWhenVisible);
+      window.removeEventListener('focus', syncWhenFocused);
+    };
+  }, [isLocalPreview, refreshWallet, user?.id]);
+
+  useEffect(() => {
+    const handleWalletRefresh = () => {
+      void refreshWallet();
+    };
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === 'vixy:wallet-refresh') {
+        void refreshWallet();
+      }
+    };
+
+    window.addEventListener('vixy:wallet-refresh', handleWalletRefresh);
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener('vixy:wallet-refresh', handleWalletRefresh);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [refreshWallet]);
 
   const setBalance = useCallback((newBalance: number) => {
     setBalanceState(newBalance);
@@ -256,7 +296,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     notifications,
     addNotification,
     clearNotifications,
-  }), [balance, credits, setBalance, setCredits, addBalance, addCredits, deductBalance, deductCredits, sessionStatus, isLoading, transactions, addTransaction, notifications, addNotification, clearNotifications]);
+    refreshWallet,
+  }), [balance, credits, setBalance, setCredits, addBalance, addCredits, deductBalance, deductCredits, sessionStatus, isLoading, transactions, addTransaction, notifications, addNotification, clearNotifications, refreshWallet]);
 
   return (
     <AppContext.Provider value={value}>

@@ -1,5 +1,5 @@
 /* Let narrow or short windows scroll as one page; keep the desktop workspace
-   and its voice settings independently scrollable when there is room. */
+   comfortable as more controls are added. */
 .morphly-dashboard {
   width: 100%;
   height: 100vh;
@@ -22,26 +22,6 @@
   inset: 0;
 }
 
-.morphly-dashboard .morphly-voice-settings {
-  flex: none;
-  overflow: visible;
-  overflow-wrap: anywhere;
-}
-
-.morphly-dashboard [data-morphly-voice-panel] [data-slot='select-value'] {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Radix renders these menus in a portal. Its viewport must fit inside the
-   menu's borders, including when a device name wraps over multiple lines. */
-.morphly-voice-device-menu [data-radix-select-viewport] {
-  min-width: 0;
-}
-
 .morphly-session-controls {
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
 }
@@ -62,15 +42,8 @@
     min-height: 320px;
   }
 
-  .morphly-dashboard [data-morphly-voice-panel] {
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  .morphly-dashboard .morphly-voice-settings {
-    flex: 1 1 0%;
-    overflow-y: auto;
-    overflow-x: hidden;
+  .morphly-dashboard-preview {
+    min-height: 520px;
   }
 }
 

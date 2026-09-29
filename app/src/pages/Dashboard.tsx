@@ -36,7 +36,6 @@ import {
   trackSessionCompleted,
 } from '@/lib/telemetry-client';
 import { UpdateBanner } from '@/components/UpdateBanner';
-import { MeanVcPanel } from '@/components/MeanVcPanel';
 import { MorphlyDashboardTour } from '@/components/onboarding/MorphlyDashboardTour';
 import {
   claimSignupBonusWelcome,
@@ -2636,6 +2635,16 @@ function Dashboard() {
   }, [activeMode, isStreaming, selectedProvider, startWebcam]);
 
   useEffect(() => {
+    if (isStreaming || isLoading || !referenceImage || !selectedCameraId || !selectedProvider) {
+      return;
+    }
+
+    void startWebcam(activeMode, { silent: true, provider: selectedProvider }).catch((error) => {
+      console.warn('Unable to start camera preview:', error);
+    });
+  }, [activeMode, isLoading, isStreaming, referenceImage, selectedCameraId, selectedProvider, startWebcam]);
+
+  useEffect(() => {
     if (!isStreaming || !realtimeClientRef.current) {
       return;
     }
@@ -3143,7 +3152,6 @@ function Dashboard() {
     <div className="morphly-dashboard flex flex-col bg-background font-sans text-foreground">
       <CustomerEngagement paused={!onboardingChecked || isTourRunning || isStreaming || isLoading || isUpdaterBlocking} />
       <main className="morphly-dashboard-main flex min-w-0 bg-background">
-        <MeanVcPanel />
         <section
           data-tour="dashboard"
           aria-label="Live streaming preview"
@@ -3171,23 +3179,65 @@ function Dashboard() {
         />
 
         {!isStreaming && !isLoading && referenceImage && (
-              <div className="flex max-w-xl flex-col items-center justify-center px-8 py-7 text-center">
-                <div className="relative max-h-[min(68vh,560px)] w-full overflow-hidden rounded-lg border border-border bg-muted shadow-[0_24px_70px_rgba(0,0,0,0.35)]">
+              <div className="grid w-full max-w-6xl grid-cols-1 gap-4 px-4 py-6 md:grid-cols-[minmax(260px,0.82fr)_minmax(320px,1.18fr)] md:px-8">
+                <div className="flex min-w-0 flex-col">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Reference image</p>
+                      <p className="mt-1 max-w-[260px] truncate text-xs font-medium text-foreground" title={referenceImage.name}>{referenceImage.name}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="h-8 shrink-0 rounded-md border border-border px-2.5 text-[11px] font-semibold text-foreground hover:bg-muted"
+                    >
+                      Change
+                    </button>
+                  </div>
+                  <div className="relative aspect-[4/5] min-h-0 overflow-hidden rounded-lg border border-border bg-muted shadow-[0_18px_50px_rgba(0,0,0,0.28)]">
                   <img
                     src={referenceImage.previewUrl}
                     alt="Selected reference preview"
-                    className="h-full max-h-[min(68vh,560px)] w-full object-contain"
+                    className="h-full w-full object-contain"
                     onError={() => setDashboardError({
                       title: 'Image preview unavailable',
                       message: 'The image was uploaded, but Vixy could not render a local preview. Try a PNG or JPG image.',
                     })}
                   />
                 </div>
-                <div className="mt-4 flex items-center gap-2 rounded-md border border-success/25 bg-success-soft px-3 py-2 text-xs text-success">
-                  <ImageIcon aria-hidden="true" className="size-4" />
-                  <span className="max-w-[280px] truncate font-medium" title={referenceImage.name}>{referenceImage.name}</span>
                 </div>
-                <p className="mt-2 text-[11px] leading-4 text-muted-foreground">Choose your physical camera, then go live to animate this image.</p>
+                <div className="flex min-w-0 flex-col">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Camera preview</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{selectedCameraId ? 'You should see yourself here before going live.' : 'Select your physical camera below.'}</p>
+                    </div>
+                    <div className="flex items-center gap-2 rounded-md border border-success/25 bg-success-soft px-2.5 py-1.5 text-[11px] font-semibold text-success">
+                      <ImageIcon aria-hidden="true" className="size-3.5" />
+                      Ready
+                    </div>
+                  </div>
+                  <div className="relative aspect-video min-h-[240px] overflow-hidden rounded-lg border border-border bg-black shadow-[0_18px_50px_rgba(0,0,0,0.28)]">
+                    <video
+                      ref={webcamVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="h-full w-full object-cover"
+                      style={{ transform: 'scaleX(-1)' }}
+                    />
+                    {!selectedCameraId && (
+                      <div className="absolute inset-0 grid place-items-center bg-background/88 px-6 text-center">
+                        <div>
+                          <Monitor aria-hidden="true" className="mx-auto size-8 text-muted-foreground" />
+                          <p className="mt-3 text-sm font-semibold text-foreground">Select your camera</p>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">Choose your laptop or USB camera below, then tap Go live.</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <p className="mt-3 text-center text-xs leading-5 text-muted-foreground">Flow: upload picture, confirm your camera preview, then Go live.</p>
+                </div>
           </div>
         )}
 
@@ -3197,7 +3247,7 @@ function Dashboard() {
                   <Monitor aria-hidden="true" className="size-5 stroke-[1.4]" />
                 </div>
                 <h2 className="mt-3 text-xs font-semibold text-foreground">Preview offline</h2>
-                <p className="mt-1.5 text-[11px] leading-4 text-muted-foreground">Choose an engine, camera and image to begin.</p>
+                <p className="mt-1.5 text-[11px] leading-4 text-muted-foreground">Upload a picture, choose your camera, then go live.</p>
           </div>
         )}
 

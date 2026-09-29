@@ -2,7 +2,7 @@
   "name": "vixy-desktop",
   "private": true,
   "version": "2.5.13",
-  "description": "Vixy Desktop with virtual camera support and an optional on-demand voice engine.",
+  "description": "Vixy Desktop with virtual camera support.",
   "author": "Vixy",
   "repository": {
     "type": "git",
@@ -52,21 +52,12 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
-      "server/meanvc-runtime.js",
       "shared/**/*"
     ],
     "extraResources": [
       {
         "from": "build/icon.ico",
         "to": "icon.ico"
-      },
-      {
-        "from": "server/meanvc-realtime.py",
-        "to": "vixyvc/meanvc-realtime.py"
-      },
-      {
-        "from": "build/VBCABLE_Setup_x64.exe",
-        "to": "vbcable/VBCABLE_Setup_x64.exe"
       }
     ],
     "afterPack": "build/afterPack.cjs",

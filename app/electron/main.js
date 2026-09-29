@@ -12,15 +12,9 @@ import { validateCameraSelectionForTrustedProcess } from './camera-validation.js
 import { selectVirtualCameraProfile } from './virtual-camera-profile.js';
 import { buildCameraRepairCommand, createCameraRepairService, executeCameraRepair, supportsMediaFoundationCamera } from './virtual-camera-repair.js';
 import { loadMorphlyEnvironment } from '../shared/load-environment.js';
-import { createMeanVcRuntimeController } from '../server/meanvc-runtime.js';
-import {
-  getVoiceEnginePath,
-  installVoiceEngine,
-  isVoiceEngineInstalled,
-} from './voice-engine-installer.js';
 
 const require = createRequire(import.meta.url);
-const { app, BrowserWindow, systemPreferences, ipcMain, Menu, nativeImage, clipboard, shell, nativeTheme, dialog } = require('electron');
+const { app, BrowserWindow, systemPreferences, ipcMain, Menu, nativeImage, clipboard, nativeTheme } = require('electron');
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 // Vixy's approved light theme is independent of the operating-system theme.
@@ -94,8 +88,6 @@ configureChromiumCachePaths();
 
 let mainWindow = null;
 let desktopUpdater = null;
-let morphlyVcRuntime = null;
-let voiceEngineInstallPromise = null;
 let morphlyCamWindow = null;
 let morphlyCamPublisher = null;
 let virtualCameraEnabled = process.platform === 'win32';
@@ -1290,209 +1282,6 @@ function registerClipboardHandlers() {
   });
 }
 
-function getVoiceEngineDataRoot() {
-  return isPackagedRuntime
-    ? path.join(app.getPath('userData'), 'vixyvc')
-    : path.resolve(__dirname, '../.meanvc');
-}
-
-// The voice engine is an optional on-demand download, so prefer a copy the user
-// already installed under userData and fall back to a bundled one when present.
-function resolveVoiceEngineRuntimeRoot(dataRoot) {
-  if (isVoiceEngineInstalled(dataRoot)) {
-    return getVoiceEnginePath(dataRoot);
-  }
-
-  return isPackagedRuntime
-    ? path.join(process.resourcesPath, 'vixyvc', 'runtime-40ms')
-    : getVoiceEnginePath(dataRoot);
-}
-
-function createMorphlyVcController() {
-  const dataRoot = getVoiceEngineDataRoot();
-  const bundledRuntimeRoot = resolveVoiceEngineRuntimeRoot(dataRoot);
-  const bundledBridge = isPackagedRuntime
-    ? path.join(process.resourcesPath, 'vixyvc', 'meanvc-realtime.py')
-    : path.resolve(__dirname, '../server/meanvc-realtime.py');
-
-  fs.mkdirSync(dataRoot, { recursive: true });
-  return createMeanVcRuntimeController({
-    repositoryRoot: path.resolve(__dirname, '../../third_party/MeanVC2'),
-    dataRoot,
-    bundledRuntimeRoot,
-    bundledBridge,
-  });
-}
-
-function registerMorphlyVcHandlers() {
-  const requireMainRenderer = (event) => {
-    if (!mainWindow || mainWindow.isDestroyed() || event.sender.id !== mainWindow.webContents.id) {
-      throw new Error('VixyVC controls are available only from the Vixy dashboard.');
-    }
-  };
-  const runtime = () => {
-    if (!morphlyVcRuntime) {
-      throw new Error('VixyVC is still starting.');
-    }
-    return morphlyVcRuntime;
-  };
-
-  ipcMain.handle('vixyvc:status', (event) => {
-    requireMainRenderer(event);
-    return runtime().getStatus();
-  });
-  ipcMain.handle('vixyvc:reference', (event, payload) => {
-    requireMainRenderer(event);
-    const bytes = payload?.data;
-    const fileName = typeof payload?.fileName === 'string' ? payload.fileName : 'reference.wav';
-    if (!(bytes instanceof Uint8Array) && !ArrayBuffer.isView(bytes) && !(bytes instanceof ArrayBuffer)) {
-      throw new Error('Choose a valid WAV reference recording.');
-    }
-    return runtime().saveReference(Buffer.from(bytes), fileName);
-  });
-  ipcMain.handle('vixyvc:prepare', (event, payload) => {
-    requireMainRenderer(event);
-    return runtime().prepare(payload ?? {});
-  });
-  ipcMain.handle('vixyvc:start', (event, payload) => {
-    requireMainRenderer(event);
-    return runtime().start(payload ?? {});
-  });
-  ipcMain.handle('vixyvc:pitch', (event, payload) => {
-    requireMainRenderer(event);
-    return runtime().setPitch(payload ?? {});
-  });
-  ipcMain.handle('vixyvc:stop', (event) => {
-    requireMainRenderer(event);
-    return runtime().stop();
-  });
-  ipcMain.handle('vixyvc:engine-status', (event) => {
-    requireMainRenderer(event);
-    const dataRoot = getVoiceEngineDataRoot();
-    return {
-      installed: isVoiceEngineInstalled(dataRoot),
-      installPath: getVoiceEnginePath(dataRoot),
-      available: isPackagedRuntime,
-    };
-  });
-  ipcMain.handle('vixyvc:install-engine', (event) => {
-    requireMainRenderer(event);
-    if (voiceEngineInstallPromise) {
-      return voiceEngineInstallPromise;
-    }
-
-    const dataRoot = getVoiceEngineDataRoot();
-    voiceEngineInstallPromise = (async () => {
-      try {
-        const confirmation = await dialog.showMessageBox(mainWindow, {
-          type: 'question',
-          title: 'Install voice engine',
-          message: 'Do you want to install the Vixy voice changer engine?',
-          detail: 'This optional download is several gigabytes and may take a while. You only need it for voice changing. Vixy will download and install it automatically.',
-          buttons: ['Install voice engine', 'Not now'],
-          defaultId: 0,
-          cancelId: 1,
-          noLink: true,
-        });
-        if (confirmation.response !== 0) return { success: false, cancelled: true };
-        const result = await installVoiceEngine({
-          installRoot: dataRoot,
-          tempRoot: path.join(app.getPath('temp'), 'morphly-voice-engine'),
-          version: app.getVersion(),
-          onProgress: (progress) => {
-            if (mainWindow && !mainWindow.isDestroyed()) {
-              mainWindow.webContents.send('vixyvc:install-progress', progress);
-            }
-          },
-        });
-
-        // Recreate the controller so it serves the freshly installed runtime.
-        if (isPackagedRuntime) {
-          morphlyVcRuntime?.shutdown?.();
-          morphlyVcRuntime = createMorphlyVcController();
-        }
-
-        return { success: true, ...result };
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error
-            ? error.message
-            : 'Vixy could not install the voice engine.',
-        };
-      } finally {
-        voiceEngineInstallPromise = null;
-      }
-    })();
-
-    return voiceEngineInstallPromise;
-  });
-  ipcMain.handle('virtual-microphone:detect', async (event) => {
-    requireMainRenderer(event);
-    try {
-      // Check for VB-CABLE by looking for its audio endpoint in the registry.
-      // VB-Audio registers under this well-known driver description.
-      const { execSync } = await import('child_process');
-      const output = execSync(
-        'powershell -NoProfile -Command "Get-ItemProperty \'HKLM:\\SOFTWARE\\VB-Audio\\Cable\' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty InstallDir"',
-        { timeout: 5000, encoding: 'utf8', windowsHide: true },
-      ).trim();
-      return { installed: output.length > 0, path: output || null };
-    } catch {
-      // Registry key not found means VB-CABLE is not installed
-      return { installed: false, path: null };
-    }
-  });
-  ipcMain.handle('virtual-microphone:install', async (event) => {
-    requireMainRenderer(event);
-    const resourcesPath = isPackagedRuntime
-      ? path.join(process.resourcesPath, 'vbcable')
-      : path.join(__dirname, '..', 'build');
-    const installerPath = path.join(resourcesPath, 'VBCABLE_Setup_x64.exe');
-
-    if (!fs.existsSync(installerPath)) {
-      return {
-        success: false,
-        error: 'VB-CABLE installer not found. Please reinstall Vixy Desktop.',
-      };
-    }
-
-    try {
-      // Run the VB-CABLE installer with admin elevation using silent install flags (-i -h).
-      const { exec } = await import('child_process');
-      await new Promise((resolve, reject) => {
-        const child = exec(
-          `powershell -NoProfile -Command "Start-Process -FilePath '${installerPath.replace(/'/g, "''")}' -ArgumentList '-i -h' -Verb RunAs -Wait"`,
-          { timeout: 120000, windowsHide: true },
-          (error) => {
-            if (error) reject(error);
-            else resolve();
-          },
-        );
-        child.on('error', reject);
-      });
-
-      return { success: true };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown installation error';
-      console.error('VB-CABLE installation failed:', message);
-      // User may have cancelled the UAC prompt
-      const cancelled = /canceled|cancelled|elevation|1223/i.test(message);
-      return {
-        success: false,
-        error: cancelled
-          ? 'Installation was cancelled. VB-CABLE requires administrator permission to install.'
-          : `VB-CABLE installation failed: ${message}`,
-      };
-    }
-  });
-  ipcMain.handle('virtual-microphone:open-setup', async (event) => {
-    requireMainRenderer(event);
-    await shell.openExternal('https://vb-audio.com/Cable/');
-    return { success: true };
-  });
-}
-
 app.whenReady().then(async () => {
   if (process.platform === 'darwin') {
     await systemPreferences.askForMediaAccess('camera');
@@ -1502,15 +1291,6 @@ app.whenReady().then(async () => {
   registerCameraHandlers();
   registerWindowHandlers();
   registerClipboardHandlers();
-  if (isPackagedRuntime) {
-    try {
-      morphlyVcRuntime = createMorphlyVcController();
-    } catch (error) {
-      console.warn('VixyVC startup deferred:', formatErrorMessage(error));
-      morphlyVcRuntime = null;
-    }
-  }
-  registerMorphlyVcHandlers();
 
   desktopUpdater = createDesktopUpdater({
     manifestUrl: resolveUpdateManifestUrl(),
@@ -1545,7 +1325,6 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   stopVixyCamPublisher();
-  morphlyVcRuntime?.shutdown();
 
   if (desktopUpdater) {
     desktopUpdater.dispose();

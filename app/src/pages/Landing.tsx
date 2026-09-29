@@ -31,7 +31,7 @@ const highlights = [
   {
     icon: Mic2,
     title: 'Keep audio close',
-    copy: 'Camera and voice controls live together, so your setup feels like one studio instead of scattered tools.',
+    copy: 'Camera controls, live preview, and output guidance stay together so setup feels like one focused studio.',
   },
   {
     icon: ShieldCheck,
@@ -202,7 +202,7 @@ export default function Landing() {
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Desktop studio</p>
             <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">A calm control room for your live look.</h2>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Vixy keeps the important controls close: camera input, live preview, session status, voice tools, and output guidance. It is made for repeated use, not a one-time demo.
+              Vixy keeps the important controls close: camera input, image preview, live output, session status, and output guidance. It is made for repeated use, not a one-time demo.
             </p>
             <ul className="mt-6 grid gap-3">
               {[

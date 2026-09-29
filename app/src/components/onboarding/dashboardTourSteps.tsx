@@ -27,7 +27,7 @@ export const dashboardTourSteps: Step[] = [
         </p>
         <p className="rounded-lg border border-warning/30 bg-warning-soft p-2.5 text-warning">
           Do not select Vixy Virtual Camera, Avatar Mimic Real Time Windows Virtual Camera, OBS
-          Virtual Camera, VB-CABLE or any other virtual camera.
+          Virtual Camera, OBS Virtual Camera, SplitCam, or any other virtual camera.
         </p>
         <p>This selector is the physical input camera that captures your face.</p>
       </div>

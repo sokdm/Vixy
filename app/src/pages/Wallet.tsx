@@ -4,13 +4,14 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
+import { CREDITS_PER_SECOND, CREDITS_PER_SECOND_PRO } from '@/lib/billing';
 
 function Wallet() {
   const { credits, transactions } = useApp();
   const navigate = useNavigate();
 
   // Calculate estimated time from credits
-  const estimatedSeconds = credits / 2;
+  const estimatedSeconds = credits / CREDITS_PER_SECOND;
   const estimatedMinutes = Math.floor(estimatedSeconds / 60);
   const estimatedRemainingSeconds = estimatedSeconds % 60;
 
@@ -39,7 +40,7 @@ function Wallet() {
             <p className="text-sm text-muted-foreground">
               Estimated stream time: <span className="text-foreground font-semibold">~{estimatedMinutes}m {Math.round(estimatedRemainingSeconds)}s</span>
             </p>
-            <p className="text-xs text-muted-foreground mt-1">Based on Plus rate (2 credits per second). Pro deducts 2.5 credits per second.</p>
+            <p className="text-xs text-muted-foreground mt-1">Based on Plus rate ({CREDITS_PER_SECOND} credits per second). Pro deducts {CREDITS_PER_SECOND_PRO} credits per second.</p>
           </div>
           <Button 
             onClick={() => navigate('/settings')}

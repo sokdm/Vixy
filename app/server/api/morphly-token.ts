@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { authenticateRequestUser } from '../../../shared/admin-auth.js';
 
 const MORPHLY_SESSIONS_URL = 'https://api.morphly.fun/v1/realtime/sessions';
 const DEFAULT_MODEL = 'M 2.1';
@@ -20,6 +21,16 @@ function getAllowedOrigin(req) {
   return `${protocol}://${host}`;
 }
 
+function isDesktopRequestWithoutBrowserOrigin(req) {
+  const userAgent = String(req.headers?.['user-agent'] || req.get?.('user-agent') || '').toLowerCase();
+  const secFetchSite = String(req.headers?.['sec-fetch-site'] || req.get?.('sec-fetch-site') || '').toLowerCase();
+
+  // Packaged Electron requests often arrive without an Origin header. Browsers
+  // normally include Sec-Fetch-* metadata for app fetches, so this is only used
+  // after the account bearer token is verified below.
+  return !secFetchSite || userAgent.includes('electron') || userAgent.includes('vixy');
+}
+
 function clampSessionSeconds(value) {
   const numeric = Number(value ?? DEFAULT_MAX_SESSION_SECONDS);
   if (!Number.isFinite(numeric)) return DEFAULT_MAX_SESSION_SECONDS;
@@ -39,12 +50,17 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
+  const auth = await authenticateRequestUser(req);
+  if (auth.error) {
+    return res.status(auth.status).json({ error: auth.error });
+  }
+
   const requestOrigin = getRequestOrigin(req);
   const isLocalOrigin = !requestOrigin && /^(?:http:\/\/)?(?:localhost|127\.0\.0\.1)(?::\d+)?$/i.test(allowedOrigin.replace(/^https?:\/\//, ''));
   if (allowedOrigin && requestOrigin && requestOrigin !== allowedOrigin) {
     return res.status(403).json({ error: 'Origin not allowed' });
   }
-  if (allowedOrigin && !requestOrigin && !isLocalOrigin) {
+  if (allowedOrigin && !requestOrigin && !isLocalOrigin && !isDesktopRequestWithoutBrowserOrigin(req)) {
     return res.status(403).json({ error: 'Origin required' });
   }
 

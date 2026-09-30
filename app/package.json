@@ -49,6 +49,8 @@
       "output": "release",
       "buildResources": "build"
     },
+    "asar": true,
+    "npmRebuild": false,
     "files": [
       "dist/**/*",
       "electron/**/*",

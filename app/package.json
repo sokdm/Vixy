@@ -1,7 +1,7 @@
 {
   "name": "vixy-desktop",
   "private": true,
-  "version": "2.5.14",
+  "version": "2.5.15",
   "description": "Vixy Desktop with virtual camera support.",
   "author": "Vixy",
   "repository": {

@@ -24,23 +24,23 @@ async function fixture(t, entries = []) {
   return output;
 }
 
-test('desktop package retains the bridge while excluding the optional engine', async t => {
+test('desktop package retains the camera bridge while excluding optional runtimes', async t => {
   const output = await fixture(t);
-  await mkdir(path.join(output, 'resources/vixyvc'), { recursive: true });
-  await writeFile(path.join(output, 'resources/vixyvc/meanvc-realtime.py'), 'bridge');
+  await mkdir(path.join(output, 'resources/unity-capture'), { recursive: true });
+  await writeFile(path.join(output, 'resources/unity-capture/vixy_unity_capture_sender.exe'), 'bridge');
   assert.ok(await verifyPackage(output) > 0);
 });
 
-test('packaging rejects repository and voice-runtime files even when nested inside ASAR', async t => {
+test('packaging rejects repository and legacy runtime files even when nested inside ASAR', async t => {
   for (const entry of ['node_modules/morphly-api/package.json', 'node_modules/dependency/app/.meanvc/runtime-40ms/python.exe', '.env.production']) {
     const output = await fixture(t, [entry]);
     await assert.rejects(verifyPackage(output), /Unexpected.*app.asar/);
   }
 });
 
-test('packaging rejects unpacked voice files and oversized payloads before NSIS', async t => {
+test('packaging rejects unpacked legacy runtime files and oversized payloads before NSIS', async t => {
   const output = await fixture(t);
   await assert.rejects(verifyPackage(output, { maxBytes: 1 }), /too large/);
-  await mkdir(path.join(output, 'resources/vixyvc/runtime-40ms'), { recursive: true });
+  await mkdir(path.join(output, 'resources/.meanvc/runtime-40ms'), { recursive: true });
   await assert.rejects(verifyPackage(output), /Unexpected file/);
 });

@@ -285,7 +285,7 @@ function ProductPreview() {
               {[
                 ['Camera', 'HD webcam'],
                 ['Look', 'Realtime style'],
-                ['Voice', 'Optional tools'],
+                ['Tools', 'Coming soon'],
                 ['Output', 'Virtual camera'],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-md bg-background px-3 py-2">

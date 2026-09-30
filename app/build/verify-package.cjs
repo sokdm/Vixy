@@ -14,7 +14,7 @@ function forbiddenEntry(entry) {
 async function verifyPackage(appOutDir, { maxBytes = MAX_PACKAGE_BYTES } = {}) {
   const archive = path.join(appOutDir, 'resources', 'app.asar');
   const forbidden = listPackage(archive).find(forbiddenEntry);
-  if (forbidden) throw new Error(`Unexpected repository, voice runtime or environment file in app.asar: ${forbidden}`);
+  if (forbidden) throw new Error(`Unexpected repository, legacy runtime or environment file in app.asar: ${forbidden}`);
 
   let totalBytes = 0;
   async function visit(directory) {
@@ -29,9 +29,9 @@ async function verifyPackage(appOutDir, { maxBytes = MAX_PACKAGE_BYTES } = {}) {
   }
   await visit(appOutDir);
   if (totalBytes >= maxBytes) {
-    throw new Error(`Desktop package is too large (${Math.ceil(totalBytes / 1024 / 1024)} MiB). Keep the optional voice runtime outside the NSIS installer.`);
+    throw new Error(`Desktop package is too large (${Math.ceil(totalBytes / 1024 / 1024)} MiB). Keep optional runtimes outside the NSIS installer.`);
   }
-  console.log(`[package-check] Desktop payload: ${Math.ceil(totalBytes / 1024 / 1024)} MiB; optional voice runtime excluded.`);
+  console.log(`[package-check] Desktop payload: ${Math.ceil(totalBytes / 1024 / 1024)} MiB; optional runtimes excluded.`);
   return totalBytes;
 }
 
